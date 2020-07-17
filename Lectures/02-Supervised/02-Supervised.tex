@@ -1,0 +1,3696 @@
+\documentclass{beamer}
+
+\mode<presentation>
+{
+  \setbeamertemplate{background canvas}[square]
+  \pgfdeclareimage[height=3em,interpolate=true]{aitlogo}{../../ait-logo}
+  \pgfdeclareimage[width=6em,interpolate=true]{dsailogo}{../../dsai-logo}
+  \pgfdeclareimage[width=6em,interpolate=true]{erasmuslogo}{../../erasmus-logo}
+  \titlegraphic{\pgfuseimage{dsailogo} \hspace{0.2in} \pgfuseimage{erasmuslogo} \hspace{0.2in} \pgfuseimage{aitlogo}}
+  %\usetheme{default}
+  \usetheme{Madrid}
+  \usecolortheme{rose}
+  \usefonttheme[onlysmall]{structurebold}
+}
+
+\usepackage{pgf,pgfarrows,pgfnodes,pgfautomata,pgfheaps,pgfshade}
+\usepackage{amsmath,amssymb}
+\usepackage{graphics}
+\usepackage{ragged2e}
+\usepackage{array}
+\usepackage[latin1]{inputenc}
+\usepackage{colortbl}
+\usepackage[absolute,overlay]{textpos}
+\setlength{\TPHorizModule}{30mm}
+\setlength{\TPVertModule}{\TPHorizModule}
+\textblockorigin{10mm}{10mm}
+\usepackage[english]{babel}
+\usepackage{listings}
+\setbeamercovered{dynamic}
+
+\AtBeginSection[]{
+  \begin{frame}<beamer>
+  \frametitle{Outline}
+  \tableofcontents[currentsection]
+  \end{frame}
+}
+
+\title[Machine Learning]{Machine Learning\\Supervised Learning}
+\author{Matthew Dailey}
+\institute[ICT-AIT]{
+  Information and Communication Technologies \\
+  Asian Institute of Technology}
+\date{}
+
+% My math definitions
+
+\renewcommand{\vec}[1]{\boldsymbol{#1}}
+\newcommand{\mat}[1]{\mathtt{#1}}
+\newcommand{\ten}[1]{\mathcal{#1}}
+\newcommand{\crossmat}[1]{\begin{bmatrix} #1 \end{bmatrix}_{\times}}
+\renewcommand{\null}[1]{{\cal N}(#1)}
+\newcommand{\class}[1]{{\cal C}_{#1}}
+\def\Rset{\mathbb{R}}
+\def\Pset{\mathbb{P}}
+\DeclareMathOperator*{\argmax}{argmax}
+\DeclareMathOperator*{\argmin}{argmin}
+\DeclareMathOperator*{\sign}{sign}
+\DeclareMathOperator*{\cov}{Cov}
+\def\norm{\mbox{$\cal{N}$}}
+
+\newcommand{\stereotype}[1]{\guillemotleft{{#1}}\guillemotright}
+
+\newcommand{\myfig}[3]{\centerline{\includegraphics[width={#1}]{{#2}}}
+    \centerline{\scriptsize #3}}
+
+\begin{document}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%             CONTENTS START HERE
+
+%\setbeamertemplate{navigation symbols}{}
+
+\frame{\titlepage}
+
+%--------------------------------------------------------------------
+%\part<presentation>{Part name}
+%
+%\frame{\partpage}
+
+\begin{frame}
+\frametitle{Readings}
+
+Readings for these lecture notes:
+\begin{itemize}
+\item[-] Bishop, C. (2006), \textit{Pattern Recognition and Machine Learning},
+  Springer, Chapters 3, 4, 6, 7.
+\item[-] Hastie, T., Tibshirani, R., and Friedman, J. (2016),
+  \textit{Elements of Statistical Learning: Data Mining, Inference, and
+    Prediction}, Springer, Chapters 2, 3, 4, 12.
+\item[-] Ng, A. (2017), \textit{Supervised Learning}, Lecture note set
+  1 for CS229, Stanford University.
+\item[-] Ng, A. (2017), \textit{Generative Learning Algorithms},
+  Lecture note set 2 for CS229, Stanford University.
+\item[-] Ng, A. (2017), \textit{Support Vector Machines},
+  Lecture note set 3 for CS229, Stanford University.
+\end{itemize}
+
+These notes contain material $\copyright$ Bishop (2006), Hastie et
+al.\ (2016), and Ng (2017).
+
+\end{frame}
+
+%======================================================================
+\section{Introduction}
+%======================================================================
+
+\begin{frame}{Introduction}{What is machine learning?}
+
+  Machine learning is now near the top of the list of skills
+  U.S.\ companies want to see in the people they hire.
+
+  \medskip
+  
+  What's all the fuss, and what is machine learning?
+
+  \medskip
+  
+  Many tasks we want computers to do are difficult to program
+  directly.
+
+  \medskip
+  
+  Examples: image recognition, speech recognition, controlling a
+  self-driving car.
+
+  \medskip
+
+  \begin{block}{Machine learning}
+  A set of tools that let us specify the computer's
+  behavior by giving examples of \alert{how} it should respond in
+  given situations, \alert{without specifying the computation
+    necessary} to formulate that response.
+  \end{block}
+
+  \medskip
+  
+  We tell the computer \alert{what} it should decide to do in a
+  situation but not \alert{how} to make the decision.
+
+\end{frame}
+
+
+\begin{frame}{Introduction}{What's a model?}
+
+  Essential idea: we want to create a \alert{model} from data that can
+  later be \alert{queried} when new situations arise.
+
+  \medskip
+
+  \begin{block}{Model}
+
+    A (mathematical) function whose input is a \alert{description of
+      the current situation} and whose output is a \alert{decision,
+      recommendation, or action}.
+
+  \end{block}
+
+\end{frame}
+
+
+\begin{frame}{Introduction}{Examples of ML in real life}
+  
+  We are using machine learning every time we
+  \begin{itemize}
+  \item Use a credit card
+  \item Get a recommendation from Netflix or Amazon
+  \item Ask Google for directions by voice
+  \item Take a ride in our Tesla!
+  \end{itemize}
+
+  \medskip
+  
+  Let's brainstorm about things closer to home that might be using
+  machine learning already or might benefit from it in the near
+  future.
+
+\end{frame}
+
+
+\begin{frame}{Introduction}{The four problems for machine learning}
+
+  Machine learning comprises perhaps four basic problems:
+  \begin{itemize}
+  \item \alert{Classification}: place instances into one or more of a
+    set of given discrete \alert{categories}.
+  \item \alert{Regression}: estimate a function from sample
+    inputs/outputs that can later be used for \alert{interpolation} or
+    \alert{extrapolation}.
+  \item \alert{Density estimation}: estimate a probability density
+    function from a sample from the distribution that can later be used,
+    e.g., for \alert{anomaly detection}.
+  \item \alert{Reinforcement}: derive a \alert{policy} that enables an
+    agent to behave optimally in an uncertain environment using
+    \alert{feedback} on the goodness of the outcome over time.
+  \end{itemize}
+
+  \medskip
+
+  Let's think about the input and output of the model in each of these
+  cases.
+  
+\end{frame}
+
+
+%======================================================================
+\section{Linear regression}
+%======================================================================
+
+\begin{frame}{Linear regression}{Preliminaries}
+
+  To see how a supervised learning model is formulated in detail, we
+  begin with the simple case of \alert{linear regression}.
+
+  \medskip
+  
+  Consider the simple example in which we would like to \alert{predict
+    a person's weight} given his or her \alert{height} and
+  \alert{age}.
+
+  \medskip
+
+  To set things up we need to specify
+  \begin{itemize}
+  \item The training set
+  \item The stucture of the model
+  \item A cost function
+  \item A procedure for minimizing the cost function
+  \end{itemize}
+
+  \medskip
+
+  We'll need some notation to get started.
+  
+\end{frame}
+
+
+\begin{frame}{Linear regression}{Notation}
+
+  Notation:
+  \begin{itemize}
+  \item A vector of input variables or \alert{features} for a given
+    instance will be written $\vec{x}$ or $\vec{x}^{(i)}$, with $i \in
+    \{1, \ldots, m\}$.
+  \item The output or \alert{target} variable will be written $y$ or
+    $y^{(i)}$.
+  \item For a supervised learning problem, a \alert{training set} is a
+    set of \alert{pairs} $\left\{(\vec{x}^{(i)},y^{(i)})\right\}_{i
+      \in \{ 1, \ldots, m \}}$.
+  \item The input space will be written ${\cal X}$, i.e.,
+    $\vec{x}^{(i)} \in {\cal X}$.
+  \item The target space will be written ${\cal Y}$, i.e.,
+    $y^{(i)} \in {\cal Y}$.
+  \end{itemize}
+
+\end{frame}
+
+
+\begin{frame}{Linear regression}{Training set}
+
+  We need a collection of pairs $\left\{(\vec{x}^{(i)},y^{(i)})\right\}$.
+
+  \medskip
+
+  Somehow we have to collect data that look like
+
+  \medskip
+
+  \begin{center}
+    \begin{tabular}{ccc}
+      \textbf{Height} & \textbf{Age} & \textbf{Weight} \\
+      \hline
+      180 & 30 & 70 \\
+      190 & 25 & 80 \\
+      $\cdots$ & $\cdots$ & $\cdots$ \\
+    \end{tabular}
+  \end{center}  
+
+  \medskip
+
+  To the extent possible, the training set population we sample from
+  should be representative of the population we will use the trained
+  model on later.
+
+  \medskip
+
+  This is an important point that will come up later.
+  
+\end{frame}
+
+
+\begin{frame}{Linear regression}{Structure of the model}
+
+  If we have a simple problem where we're predicting a single real
+  value (weight) given a single real value (height), then ${\cal X} =
+  {\cal Y} = \Rset$.
+
+  \medskip
+
+  If we have two inputs (height and age) then ${\cal X} = \Rset^2$.
+
+  \medskip
+
+  In general, we may have $n$ features representing each input instance,
+  so ${\cal X} = \Rset^n$.
+
+  \medskip
+
+  The model we learn will be a function $h : {\cal X} \mapsto {\cal Y}$.
+  
+\end{frame}
+
+
+\begin{frame}{Linear regression}{Supervised learning problem}
+
+  \begin{block}{The supervised learning problem}
+
+    Given a training set, learn a function $h : {\cal X} \mapsto {\cal Y}$
+    so that $h(\vec{x})$ is a ``good'' predictor of the corresponding value
+    of $y$.
+    
+  \end{block}
+
+  \medskip
+
+  The function $h$ is called a \alert{hypothesis}.
+
+  \medskip
+
+  If $\cal Y$ is continuous, we have a \alert{regression} problem.
+
+  \medskip
+
+  If $\cal Y$ is a discrete set, we have a \alert{classification}
+  problem.
+
+\end{frame}
+
+
+\begin{frame}{Linear regression}{Hypothesis space}
+
+  Supervised machine learning algorithms can be characterized by the
+  space of hypotheses $h : {\cal X} \mapsto {\cal Y}$ they search.
+
+  \medskip
+
+  When ${\cal X} = \Rset^n$ and ${\cal Y} = \Rset$ the simplest choice
+  is to approximate $y$ as a linear function of $\vec{x}$:
+  \[ h_{\vec{\theta}}(\vec{x}) = \theta_0 + \theta_1 x_1 + \cdots + \theta_n x_n .\]
+
+  \medskip
+
+  The $\theta_i$'s are \alert{parameters} or \alert{weights}
+  parameterizing the space of linear mappings from $\cal X$ to $\cal
+  Y$.
+
+  \medskip
+
+  It is convenient to introduce a dummy input variable $x_0=1$ so that
+  we can write
+
+  \[ h_{\vec{\theta}}(\vec{x}) = \sum_{i=0}^n \theta_i x_i = \vec{\theta}^\top \vec{x} \]
+  
+\end{frame}
+
+\begin{frame}{Linear regression}{Cost function}
+
+  How to find a good $h$, or in the case of linear regression, a good
+  $\vec{\theta}$?
+
+  \medskip
+
+  In supervised learning, we require a \alert{cost function} that assigns
+  a large cost to ``bad'' predictions $h(\vec{x})$ and a small
+  cost to ``good'' predictions $h(\vec{x})$.
+
+  \medskip
+
+  For regression problems, we often used the \alert{least squares}
+  cost function
+  \[ J(\vec{\theta}) =
+  \frac{1}{2}\sum_{i=1}^m (h_{\vec{\theta}}(\vec{x}^{(i)}) - y^{(i)})^2 .\] 
+
+  \medskip
+
+  Convince yourself that this choice of $J$ gives small values for
+  good $h$ and large values for bad $h$.
+
+  \medskip
+
+  Beyond this intuition, we will see later that least squares makes a
+  lot of sense when we formulate a \alert{generative probabilistic
+    model} for the learning problem.
+  
+\end{frame}
+
+\begin{frame}{Linear regression}{Minimizing the cost function}
+
+  How to get a good $\vec{\theta}$?
+
+  \medskip
+
+  We need to find \[ \vec{\theta}^* = \argmin_{\vec{\theta}} J(\vec{\theta}) .\]
+
+  \medskip
+
+  This will come up again and again in the course!
+
+  \medskip
+
+  How to find the $\vec{\theta}$ minimizing $J(\vec{\theta})$?
+  \begin{itemize}
+  \item From your undergraduate probability and statistics course,
+    perhaps, you know there is an analytical solution based on taking
+    the gradient, setting the elements of the gradient to 0, and
+    solving the resulting system of linear equations.
+  \item More interesting for later in the course would be to begin
+    with an initial guess about $\vec{\theta}$ and find the minimum
+    using \alert{gradient descent}.
+  \end{itemize}
+
+  \medskip
+
+  Exercise: find the gradient of $J(\vec{\theta})$, i.e.,
+  $\nabla_J(\vec{\theta})$.
+  
+\end{frame}
+
+
+\begin{frame}{Linear regression}{Minimizing the cost function}
+
+  We have \[ \nabla_J(\vec{\theta}) = \begin{bmatrix}
+    \frac{\partial J}{\partial \theta_0} &
+    \frac{\partial J}{\partial \theta_1} &
+    ... &
+    \frac{\partial J}{\partial \theta_n} \end{bmatrix} \]
+
+  You should be able to derive
+  \begin{eqnarray}
+    \frac{\partial J}{\partial \theta_0} & = & \sum_{i=1}^m (h_{\vec{\theta}}(\vec{x}^{(i)})-y^{(i)}) \nonumber \\
+    \frac{\partial J}{\partial \theta_1} & = & \sum_{i=1}^m (h_{\vec{\theta}}(\vec{x}^{(i)})-y^{(i)}) x_1^{(i)} \nonumber \\
+    \cdots & & \cdots \nonumber \\
+    \frac{\partial J}{\partial \theta_n} & = & \sum_{i=1}^m (h_{\vec{\theta}}(\vec{x}^{(i)})-y^{(i)}) x_n^{(i)} \nonumber
+  \end{eqnarray}
+
+\end{frame}
+
+
+\begin{frame}{Linear regression}{Minimizing the cost function}
+
+  As we said, for an analytical solution we want to find the point
+  where the gradient is 0.
+
+  \medskip
+
+  Setting the partial derivatives to 0 we obtain $n+1$ linear equations
+  \begin{eqnarray}
+    \sum_{i=1}^m (\theta_0 + \theta_1 x_1^{(i)} + \cdots + \theta_n x_n^{(i)} -y^{(i)}) & = & 0 \nonumber \\
+    \sum_{i=1}^m (\theta_0 x_1^{(i)}+ \theta_1 x_1^{(i)}x_1^{(i)} + \cdots + \theta_n x_n^{(i)}x_1^{(i)} -y^{(i)}x_1^{(i)}) & = & 0 \nonumber \\
+    \cdots & & \cdots \nonumber \\
+    \sum_{i=1}^m (\theta_0 x_n^{(i)}+ \theta_1 x_1^{(i)} x_n^{(i)}+ \cdots + \theta_n x_n^{(i)}x_n^{(i)} -y^{(i)}x_n^{(i)}) & = & 0 \nonumber 
+  \end{eqnarray}
+  
+\end{frame}
+
+
+\begin{frame}{Linear regression}{Minimizing the cost function}
+
+  With a bit more manipulation, we get the \alert{normal equations}
+  \begin{eqnarray}
+    \theta_0 m + \theta_1 \sum_{i=1}^mx_1^{(i)} + \cdots + \theta_n \sum_{i=1}^mx_n^{(i)} & = & \sum_{i=1}^m y^{(i)} \nonumber \\
+    \theta_0 \sum_{i=1}^m x_1^{(i)}+ \theta_1 \sum_{i=1}^mx_1^{(i)}x_1^{(i)} + \cdots + \theta_n \sum_{i=1}^m x_n^{(i)}x_1^{(i)} & = & \sum_{i=1}^m y^{(i)}x_1^{(i)} \nonumber \\
+    \cdots & & \cdots \nonumber \\
+    \theta_0 \sum_{i=1}^m x_n^{(i)}+ \theta_1 \sum_{i=1}^mx_1^{(i)} x_n^{(i)}+ \cdots + \theta_n \sum_{i=1}^m x_n^{(i)}x_n^{(i)} & = & \sum_{i=1}^m y^{(i)}x_n^{(i)} \nonumber 
+  \end{eqnarray}
+
+  Take care to remember that the $x^{(i)}_j$ and $y{(i)}$ are all
+  constant (they are given in the training set).
+
+  \medskip
+
+  This means we have $n+1$ linear equations in the $n+1$ unknown
+  elements of $\vec{\theta}$.
+  
+\end{frame}
+
+
+\begin{frame}{Linear regression}{Minimizing the cost function}
+
+  Next, let's try to simplify our system of equations.
+  If we write our training set in matrix and vector form as $\mat{X},
+  \vec{y}$ with
+  \[ \mat{X} = \begin{bmatrix}
+    1 & x_1^{(1)} & \cdots & x_n^{(1)} \\
+    1 & x_1^{(2)} & \cdots & x_n^{(2)} \\
+    \vdots & \vdots & \ddots & \vdots \\ 
+    1 & x_1^{(m)} & \cdots & x_n^{(m)} \end{bmatrix} \;\;\;
+    \vec{y} = \begin{bmatrix}
+    y^{(1)} \\ y^{(2)} \\ \vdots \\ y^{(m)}
+    \end{bmatrix}, \]
+    You should be able to verify that our system of linear equations
+    becomes
+    \[ \mat{X}^\top \mat{X} \vec{\theta} = \mat{X}^\top \vec{y}. \]
+    This is a compact form of the normal equations. $\mat{X}$ is called
+    the \alert{design matrix}.
+    The parameters minimizing
+    $J(\vec{\theta})$ must be
+    \[ \vec{\theta} = (\mat{X}^\top \mat{X})^{-1}\mat{X}^\top \vec{y}. \]
+       [Be careful about conditions under which $\mat{X}^\top \mat{X}$ has
+         no inverse.]
+\end{frame}
+
+
+\begin{frame}{Linear regression}{Gradient descent}
+
+  Now suppose we could find the gradient $\nabla_J(\vec{\theta})$ but
+  were for some reason unable to solve for $\nabla_J(\vec{\theta}) = \vec{0}$.
+
+  \medskip
+
+  Whenever we are stuck without a closed form solution to an optimization
+  problem, we can try to use iterative numerical methods.
+
+  \medskip
+
+  The simplest method is \alert{gradient descent}.
+
+  \medskip
+
+  The \alert{gradient} $\nabla_f(\vec{x})$ of a function $f(\vec{x})$
+  evaluated at an arbitrary point $\vec{x}$ is a vector with two
+  useful properties:
+  \begin{itemize}
+  \item The \alert{direction} of $\nabla_f(\vec{x})$ is the direction
+    in which $f(\vec{x})$ is increasing the fastest.
+  \item The \alert{magnitude} of $\nabla_f(\vec{x})$ is the slope
+    of $f(\vec{x})$ in that direction of maximum increase.
+  \end{itemize}
+
+\end{frame}
+
+
+\begin{frame}{Linear regression}{Gradient descent}
+
+  If we start with a guess $\vec{\theta}^{(0)}$ and calculate the gradient
+  $\nabla_J(\vec{\theta}^{(0)})$ at that guessed point, we know that the
+  resulting vector points in the direction in which the cost function is
+  increasing the most.
+
+  \medskip
+
+  Gradient descent simply repeats the process of moving $\vec{\theta}$
+  in the direction \alert{opposite} $\vec{\theta}$ until we find the
+  minimum of $J(\vec{\theta})$:
+  
+  \begin{tabbing}
+    xxxx \= xxxx \= \kill
+    $\vec{\theta} \leftarrow$ some initial guess \\
+    While not converged \\
+    \> $\vec{\theta}^{(n+1)} \leftarrow \vec{\theta}^{(n)} - \alpha \sum_{i=1}^m (h_{\vec{\theta^{(n)}}}(\vec{x}^{(i)}) - y^{(i)})\vec{x}^{(i)}$ 
+  \end{tabbing}
+
+  $\alpha$ (a small positive real number) is called the \alert{learning rate}.
+  
+\end{frame}
+
+
+\begin{frame}{Linear regression}{Batch vs.\ stochastic gradient descent}
+  \label{sgd}
+  
+  When we update our parameter vector $\vec{\theta}$ using the
+  gradient calculated over the \alert{entire training set}, we are
+  doing what is called \alert{batch} gradient descent.
+
+  \medskip
+
+  One alternative frequently used in deep learning is
+  \alert{stochastic} gradient descent, in which we repeatedly update
+  using the gradient calculated for \alert{each training element}:
+
+  \begin{tabbing}
+    xxxx \= xxxx \= \kill
+    $\vec{\theta} \leftarrow$ some initial guess \\
+    While not converged \\
+    \> For $i \in 1..m$ \\
+    \> \> $\vec{\theta}^{(n+1)} \leftarrow \vec{\theta}^{(n)} - \alpha (h_{\vec{\theta^{(n)}}}(\vec{x}^{(i)}) - y^{(i)})\vec{x}^{(i)}$ 
+  \end{tabbing}
+
+  \medskip
+
+  Stochastic gradient descent tends to get close to the minimum faster
+  than batch gradient descent but may \alert{oscillate} around the minimum.
+
+  \medskip
+
+  Slowly \alert{decreasing} the learning rate $\alpha$ over time can
+  improve convergence.
+  
+\end{frame}
+
+
+\begin{frame}{Linear regression}{Summary}
+
+  OK! Now we have three methods for minimizing $J(\vec{\theta})$:
+  \begin{itemize}
+  \item Solve the \alert{normal equations}:
+    \begin{tabbing}
+      xxxx \= xxxx \= \kill
+      $\vec{\theta} \leftarrow (\mat{X}^\top \mat{X})^{-1}\mat{X}^\top \vec{y}$
+    \end{tabbing}
+  \item \alert{Batch} gradient descent:
+    \begin{tabbing}
+      xxxx \= xxxx \= \kill
+      $\vec{\theta} \leftarrow$ some initial guess \\
+      While not converged \\
+      \> $\vec{\theta}^{(n+1)} \leftarrow \vec{\theta}^{(n)} - \alpha \sum_{i=1}^m (h_{\vec{\theta^{(n)}}}(\vec{x}^{(i)}) - y^{(i)})\vec{x}^{(i)}$ 
+    \end{tabbing}
+  \item \alert{Stochastic} gradient descent:
+    \begin{tabbing}
+      xxxx \= xxxx \= \kill
+      $\vec{\theta} \leftarrow$ some initial guess \\
+      While not converged \\
+      \> For $i \in 1..m$ \\
+      \> \> $\vec{\theta}^{(n+1)} \leftarrow \vec{\theta}^{(n)} - \alpha (h_{\vec{\theta^{(n)}}}(\vec{x}^{(i)}) - y^{(i)})\vec{x}^{(i)}$
+    \end{tabbing}    
+  \end{itemize}
+
+\end{frame}
+
+
+\begin{frame}{Linear regression}{First Python tutorial}
+
+  Now that we understand the math, let's see what Python can do for us.
+
+  \medskip
+
+  Install Python, numpy, and scikit-learn.
+
+  \medskip
+
+  Try the tutorial script from the class Website. First we'll try to
+  find optimal parameters ourselves using the normal equations, then
+  we'll use the linear regression solver in scikit-learn.
+
+  \medskip
+
+  OK! You have begun your ML Jedi training!
+
+  \medskip
+
+  Now you're ready for HW1, comparing the analytical solution with the
+  use of batch and stochastic gradient descent for linear regression.
+
+\end{frame}
+
+
+\begin{frame}{Linear regression}{Probabilistic interpretation}
+
+  Last question about linear regression: \alert{why least squares}?
+  Why not some other cost function?
+
+  \medskip
+
+  The least squares method comes naturally from a probabilistic
+  interpretation of the problem.
+
+  \medskip
+
+  We suppose that our measurements $(\vec{x}^{(i)},y^{(i)})$ were
+  \alert{generated} according to
+  \[ y^{(i)} = \vec{\theta}^\top \vec{x}^{(i)} + \epsilon^{(i)}, \]
+  where $\epsilon^{(i)}$ is an \alert{error} term representing noise
+  and whatever effects our linear model doesn't capture.
+
+\end{frame}
+
+
+\begin{frame}{Linear regression}{Probabilistic interpretation}
+
+  We might assume that the noise terms $\epsilon^{(i)}$
+  were sampled i.i.d.\footnote{Independently and identically distributed}
+  from some distribution $p(\epsilon^{(i)})$.
+
+  \medskip
+
+  [Is i.i.d.\ a reasonable assumption?]
+
+  \medskip
+
+  In many applications, a natural choice of $p(\epsilon^{(i)})$ is a
+  \alert{Gaussian} (normal distribution), which we write
+  \[ \epsilon^{(i)} \sim {\cal N}(0, \sigma^2). \]
+
+  \medskip
+
+  The univariate zero-mean Gaussian distribution is written
+  \[ p(\epsilon^{(i)}) = \frac{1}{\sqrt{2\pi\sigma^2}} e^{\left( -\frac{(\epsilon^{(i)})^2}{2\sigma^2} \right) .} \]
+  
+\end{frame}
+
+
+\begin{frame}{Linear regression}{Probabilistic interpretation}
+
+  We would like to know $p(y^{(i)} \mid \vec{x}^{(i)} ; \vec{\theta})$.
+
+  \medskip
+
+  [This is the density over possible $y^{(i)}$ (weight measurements)
+    we would obtain once we've identified $\vec{x}^{(i)}$ (the
+    individual's height and age).]
+
+  \medskip
+
+  Recall that the density over $\epsilon^{(i)}$ is
+  \[ p(\epsilon^{(i)}) = \frac{1}{\sqrt{2\pi\sigma^2}}
+     e^{-\left(\frac{(\epsilon^{(i)})^2}{2\sigma^2}\right)}. \]
+
+  \medskip
+  
+  Since $\epsilon^{(i)} = y^{(i)} - \vec{\theta}^\top\vec{x}^{(i)}$,
+  the density
+  over $y^{(i)}$ is just a shifted version of the density over $\epsilon^{(i)}$:
+  \[ p(y^{(i)} \mid \vec{x}^{(i)} ; \vec{\theta} ) = \frac{1}{\sqrt{2\pi\sigma^2}} e^{\left( -\frac{(y^{(i)}-\vec{\theta}^\top\vec{x}^{(i)})^2}{2\sigma^2} \right) .} \]
+
+  \medskip
+
+  Note: the semicolon (;) in the expression $p(y^{(i)} \mid
+  \vec{x}^{(i)} ; \vec{\theta} )$ means that the distribution is
+  \alert{parameterized} by constant $\vec{\theta}$. $\vec{\theta}$ is
+  not a random variable.
+   
+\end{frame}
+
+
+\begin{frame}{Linear regression}{Probabilistic interpretation}
+
+  Now consider the distribution of the vector of targets $\vec{y}$
+  given the \alert{design matrix} $\mat{X}$. We write this
+  \[ p(\vec{y} \mid \mat{X} ; \vec{\theta}) .\]
+
+  \medskip
+
+  Since the elements of $\vec{y}$ are independent, we can write
+  \[ p(\vec{y} \mid \mat{X} ; \vec{\theta}) = \prod_{i=1}^m
+  p(y^{(i)} \mid \vec{x}^{(i)} ; \vec{\theta} ) \]
+
+  \medskip
+
+  Since $\vec{y}$, $\mat{X}$, and $\vec{\theta}$ are all constant,
+  we are simply multiplying the ``heights'' of $m$ Gaussians at the $y^{(i)}$'s.
+
+  \medskip
+
+  The Gaussians are centered at our \alert{predictions} of the
+  $y^{(i)}$'s, so the conditional probability $p(\vec{y} \mid \mat{X}
+  ; \vec{\theta})$ will be \alert{maximized} when our predictions of
+  the $y^{(i)}$'s are \alert{perfect}.
+  
+  \medskip
+
+  This means \alert{choosing $\vec{\theta}$ to maximize $p(\vec{y} \mid
+  \mat{X} ; \vec{\theta})$} would be good!
+
+\end{frame}
+
+
+\begin{frame}{Linear regression}{Probabilistic interpretation}
+
+  Now we think we would like to choose $\vec{\theta}$ to maximize
+  $p(\vec{y} \mid \mat{X} ; \vec{\theta})$.
+
+  \medskip
+
+  First, let's write this distribution as a \alert{function} of the
+  parameter vector $\vec{\theta}$:
+  \[ L(\vec{\theta}) = L(\vec{\theta} ; \mat{X}, \vec{y}) = p(\vec{y} \mid \mat{X} ; \vec{\theta}) \]
+
+  \medskip
+
+  $L(\vec{\theta})$ is called the \alert{likelihood} function.
+
+  \begin{block}{Maximum likelihood}
+    The \alert{maximum likelihood} principle states that we should choose
+    the $\vec{\theta}$ that makes the likelihood $L(\vec{\theta})$ as large
+    as possible:
+    \[ \vec{\theta}^* = \argmax_{\vec{\theta}} L(\vec{\theta}). \]
+  \end{block}
+  
+  OK, let's try to maximize $L(\vec{\theta})$.
+  
+\end{frame}
+
+
+\begin{frame}{Linear regression}{Probabilistic interpretation}
+
+  As we already noted, since by assumption the $\epsilon^{(i)}$'s are
+  independent,
+
+  \begin{eqnarray}
+    L(\theta) & = & \prod_{i=1}^m p(y^{(i)} \mid \vec{x}^{(i)} ; \vec{\theta}) \nonumber \\
+    & = & \prod_{i=1}^m \frac{1}{\sqrt{2\pi\sigma^2}}\exp{\left( - \frac{(y^{(i)} - \vec{\theta}^\top \vec{x}^{(i)})^2}{2\sigma^2}\right)}. \nonumber
+  \end{eqnarray}
+
+  This looks difficult to maximize directly (try to evalute
+  $\frac{\partial{L}}{\partial{\vec{\theta}}}$).
+
+  \medskip
+
+  However, we can equivalenently maximize \alert{any function that is
+    strictly increasing} in $L(\vec{\theta})$.
+
+\end{frame}
+
+
+\begin{frame}{Linear regression}{Probabilistic interpretation}
+
+  It will be more convenient to maximize the
+  \alert{log likelihood} $\ell(\vec{\theta})$:
+
+  \begin{eqnarray}
+    \ell(\vec{\theta}) & = & \log L(\vec{\theta}) \nonumber \\
+    & = & \log \prod_{i=1}^m p(y^{(i)} \mid \vec{x}^{(i)} ; \vec{\theta}) \\
+    & = & \sum_{i=1}^m \log \frac{1}{\sqrt{2\pi\sigma^2}}\exp{\left( - \frac{(y^{(i)} - \vec{\theta}^\top \vec{x}^{(i)})^2}{2\sigma^2}\right)} \nonumber \\
+    & = & m \log \frac{1}{\sqrt{2\pi\sigma^2}} - \frac{1}{2\sigma^2}\sum_{i=1}^m(y^{(i)} - \vec{\theta}^\top\vec{x}^{(i)})^2. \nonumber
+  \end{eqnarray}
+
+\end{frame}
+
+
+\begin{frame}{Linear regression}{Probabilistic interpretation}
+
+  Clearly, any $\vec{\theta}$ maximizing
+  \[ m \log \frac{1}{\sqrt{2\pi\sigma^2}} - \frac{1}{2\sigma^2}\sum_{i=1}^m(y^{(i)} - \vec{\theta}^\top\vec{x}^{(i)})^2 \]
+  will also maximize
+  \[ - \frac{1}{2}\sum_{i=1}^m(y^{(i)} - \vec{\theta}^\top\vec{x}^{(i)})^2 .\]
+
+  \bigskip
+
+  Amazingly, maximizing $L(\vec{\theta})$ or $\ell(\vec{\theta})$
+  gives us the same $\vec{\theta}$ we get by minimizing
+  \[ J(\theta) = \frac{1}{2}\sum_{i=1}^m(y^{(i)}-\theta^\top\vec{x}^{(i)})^2 .\]
+
+\end{frame}
+
+
+\begin{frame}{Linear regression}{Probabilistic interpretation}
+
+  We thus see that for linear regression, \alert{least squares and
+    maximum likelihood are equivalent}.
+
+  \medskip
+
+  The equivalence comes from the assumption of i.i.d.\ Gaussian errors
+  in our samples $y^{(i)}$.
+  
+  \medskip
+
+  For other problems, we may not be able to formulate a least squares
+  cost function, but we will be able to use the more general principle of
+  maximum likelihood.
+
+\end{frame}
+
+
+\begin{frame}{Linear regression}{Summary of terms}
+
+  
+  \begin{tabular}{>{\raggedright}p{0.2\textwidth}>{\raggedright}p{0.2\textwidth}>{\raggedright\arraybackslash}p{0.5\textwidth}}
+    \hline
+    \textbf{Term} & \textbf{Definition / Symbol} & \textbf{Example} \\
+    \hline
+    Training set & $(\vec{x}^{(i)},y^{(i)})_{i \in 1..m}$ & Table of heights, ages, and weights \\
+    \hline
+    Features & $\vec{x}, \vec{x}^{(i)} \in {\cal X}$ & Height, age ($\Rset^2$) \\
+    \hline
+    Target & $y, y^{(i)} \in {\cal Y}$ & Weight ($\Rset$) \\
+    \hline
+    Hypothesis & $h_{\vec{\theta}} : {\cal X} \mapsto {\cal Y}$ & $y = \theta_0 + \theta_1 x_1 + \theta_2 x_2$ \\
+    \hline
+    Parameters or weights & $\vec{\theta}$ & $\theta_0$ (intercept), $\theta_1$ (kgs per cm), $\theta_2$ (kgs per year) \\
+    \hline
+    Cost function & $J(\vec{\theta})$ & $J(\vec{\theta}) = \frac{1}{2}\sum_{i=1}^m(h_{\vec{\theta}}(\vec{x}^{(i)} - y^{(i)})^2$ or negative log likelihood $\ell(\vec{\theta})$ \\
+    \hline
+  \end{tabular}
+
+\end{frame}
+
+
+\begin{frame}{Linear regression}{Summary of terms}
+
+  \begin{tabular}{>{\raggedright}p{0.2\textwidth}>{\raggedright}p{0.2\textwidth}>{\raggedright\arraybackslash}p{0.5\textwidth}}
+    \hline
+    \textbf{Term} & \textbf{Definition / Symbol} & \textbf{Example} \\
+    \hline
+    Design matrix & $\mat{X}$ & $\mat{X} = \begin{bmatrix} 1 & x^{(1)}_1 & x^{(1)}_2 \\ \vdots & \vdots & \vdots \end{bmatrix}$ \\
+    \hline
+    Normal equations & $\mat{X}^\top\mat{X}\theta = \mat{X}^\top\vec{y}$ & \\
+    \hline
+    Batch gradient descent & $\vec{\theta}^{n+1} \leftarrow \vec{\theta}^{n} - \alpha \nabla_J(\vec{\theta}^{(n)})$ &  $\vec{\theta}^{(n+1)} \leftarrow \vec{\theta}^{(n)} - \alpha \sum_{i=1}^m (h_{\vec{\theta^{(n)}}}(\vec{x}^{(i)}) - y^{(i)})\vec{x}^{(i)}$ \\
+    \hline
+    Stochastic gradient descent &
+    $\vec{\theta}^{n+1} \leftarrow \vec{\theta}^{n} - \alpha \frac{\partial (h_{\vec{\theta}^n}(\vec{x}^{(i)}) - y^{(i)})^2}{\partial \vec{\theta}^n}$
+    & $\vec{\theta}^{(n+1)} \leftarrow \vec{\theta}^{(n)} - \alpha (h_{\vec{\theta^{(n)}}}(\vec{x}^{(i)}) - y^{(i)})\vec{x}^{(i)}$
+    \\
+    \hline
+    Learning rate & $\alpha$ & 0.000001 \\
+    \hline
+    Gaussian/normal distribution & ${\cal N}(\mu,\sigma^2)$ & ${\cal N}(y^{(i)} - h_{\vec{\theta}}(\vec{x}^{(i)}), \sigma^2)$ \\
+    \hline
+    
+  \end{tabular}
+
+
+  
+\end{frame}
+
+
+\begin{frame}{Linear regression}{Overfitting and underfitting}
+
+  So far we have only considered the linear model
+  \[ h_{\vec{\theta}}(\vec{x}) = \vec{\theta}^\top\vec{x} .\]
+
+  \medskip
+
+  What if $y$ is not actually linearly related to $\vec{x}$?
+
+  \medskip
+
+  A simple trick is to add features that are nonlinear in $\vec{x}$.
+  For example, if we have just one feature $x$, we add a new feature $x^2$:
+  \[ y = \theta_0 + \theta_1 x + \theta_2 x^2 . \]
+  The model is still linear in $\vec{\theta}$.
+
+\end{frame}
+
+
+\begin{frame}{Linear regression}{Overfitting and underfitting}
+
+  We can take this further, for example to degree 5:
+  \[ y = \sum_{j=0}^5 \theta_j x^j .\]
+
+\end{frame}
+
+
+\begin{frame}{Linear regression}{Overfitting and underfitting}
+
+  Increasing the degree of $h_{\vec{\theta}}(\vec{x})$ works even if
+  we have more than one feature ($n > 1$).
+
+  \medskip
+  
+  With two features and polynomial degree 2:
+  \[ y = \theta_0 + \theta_1 x_1 + \theta_2 x_2 + \theta_3 x_1^2 + \theta_4 x_2^2 + \theta_5 x_1 x_2 . \]
+
+  \medskip
+
+  The question is how far we should take this?
+
+\end{frame}
+
+
+\begin{frame}{Linear regression}{Overfitting and underfitting}
+
+  It turns out that we can usually improve prediction performance on
+  the training set by increasing the complexity of our model.
+
+  \medskip
+  
+  What is the \alert{right} complexity for a model?
+
+  \medskip
+
+  We will return to this question later in the course, but for now,
+  we introduce a simple technique:
+
+  \medskip
+  
+  Instead of acquiring a \alert{single training set} $X =
+  (\vec{x}^{(i)},y^{(i)})_{i \in 1..m}$, acquire two data sets:
+  \begin{itemize}
+  \item The training set $X^{(train)}$ consisting of $m_1$ pairs, used to
+    estimate the optimal parameters $\vec{\theta}$ for $h_{\vec{\theta}}(\vec{x})$.
+  \item A separate \alert{test set} $X^{(test)}$ consisting of $m_2$ pairs,
+    used to check the \alert{generalization} ability of the
+    resulting $h_{\vec{\theta}}(\vec{x})$.
+  \end{itemize}
+
+\end{frame}
+
+
+\begin{frame}{Linear regression}{Overfitting and underfitting}
+
+  As we increase the complexity of $h_{\vec{\theta}}(\vec{x})$,
+  the cost $J(\vec{\theta})$ evaluated on the training set will usually
+  decrease monotonically.
+
+  \medskip
+
+  However, we will also take the optimal $\vec{\theta}$ for the training set
+  and calculate the same cost function $J(\vec{\theta})$ over the test set.
+
+  \medskip
+
+  Good heuristics for finding the right model complexity given
+  separate training and test sets:
+  \begin{itemize}
+  \item When both training and test cost is high, we are \alert{underfitting}
+    the data. Increase complexity.
+  \item When training error is decreasing but test error is
+    increasing, we are \alert{overfitting} the training data. Decrease
+    complexity.
+  \end{itemize}
+  
+\end{frame}
+
+
+\begin{frame}{Linear regression}{Overfitting and underfitting}
+
+  \alert{Exercise}: generate a height/weight dataset in which there is
+  a \alert{quadratic} relationship between height and weight. Show
+  that the linear model \alert{underfits} the data and that higher
+  order polynomial fits \alert{overfit} the data.
+
+  \medskip
+
+  For example, you might use $y = \theta_0 + \theta_1 x + \theta_2 x^2
+  + \epsilon$ and $\vec{\theta} = \begin{bmatrix} -426 & 5.31 &
+    -0.0139 \end{bmatrix}$.
+
+  \medskip
+
+  Check that the overfitting problem gets worse as the size of
+  the training set gets smaller or the complexity of the model
+  increases.
+  
+\end{frame}
+
+
+\begin{frame}{Linear regression}{Overfitting and underfitting}
+
+  See the handout on the course Web page for detailed code and results.
+
+  \medskip
+
+  Here is the gist:
+
+  \medskip
+
+  \myfig{4in}{over-under}{}
+  
+\end{frame}
+
+
+\begin{frame}{Linear regression}{Locally weighted linear regression}
+
+  If you play with the overfitting and underfitting tutorial notebook,
+  you'll find that the test set heuristic is not always perfectly reliable.
+
+  \medskip
+
+  Even when we know that the ``ground truth'' model is quadratic, the
+  test set might happen to be best fit by a higher-complexity model,
+  depending on the training and test set distributions.
+
+  \medskip
+
+  Is there any other (hopefully more reliable) way to avoid
+  overfitting?
+
+  \medskip
+
+  One general approach that we'll see more of later is
+  a \alert{non-paramteric} approach.
+
+  \medskip
+
+  The particular non-paramteric approach we'll explore today is
+  \alert{locally weighted linear regression}.
+
+\end{frame}
+
+
+\begin{frame}{Linear regression}{Locally weighted linear regression}
+
+  The basic approach is to define
+  \[ h(\vec{x}) = \vec{\theta}^\top \vec{x}, \]
+  where
+  \[ \vec{\theta} = \argmin_{\vec{\theta}_l} \sum_{i=1}^m w^{(i)} (y^{(i)}-\vec{\theta}_l^\top \vec{x}^{(i)})^2 \]
+  and $w^{(i)}$ is a non-negative \alert{weight} on training example
+  $i$.
+
+  \medskip
+
+  $w^{(i)}$ controls how much training example $i$ influences $\vec{\theta}$.
+
+  \medskip
+
+  How to set $w^{(i)}$?
+  
+\end{frame}
+
+
+\begin{frame}{Linear regression}{Locally weighted linear regression}
+
+  One choice of $w^{(i)}$ uses a Gaussian \alert{kernel} around $\vec{x}^{(i)}$:
+  \[ w^{(i)} = e^{-\frac{(\vec{x}^{(i)}-\vec{x})^\top(\vec{x}^{(i)}-\vec{x})}{2\tau^2}} \]
+
+  \medskip
+
+  LWLR is a \alert{non-paramteric} method because it doesn't derive
+  a complete fixed vector of parameters from the training set.
+
+  \medskip
+
+  Instead, we keep the \alert{entire training set} around, and when we
+  want a prediction for a previously unseen $\vec{x}$, we do a local
+  fit given the nearby training set items.
+
+  \medskip
+
+  The Gaussian kernel width $\tau$ is called the \alert{bandwidth}
+  parameter, which affects how local LWLR is.
+
+  \medskip
+
+  The bandwidth parameter $\tau$ is our first example of a \alert{free
+    parameter} or a \alert{hyperparameter}.
+  
+\end{frame}
+
+
+\begin{frame}{Linear regression}{Locally weighted linear regression}
+  
+  \alert{Exercise}: derive the calculation of $\vec{\theta}$ given a
+  set of weights $w^{(i)}$ over the training set.
+
+  \medskip
+
+  \alert{Hint}: factor the weights into a diagonal matrix $\mat{W}$ so
+  that you end up with $\mat{W}$ in the right place on the left and
+  right side of the normal equations.
+
+  \medskip
+
+  \alert{Exercise}: write a Python function that implements
+  $h_{\mat{X},\vec{y},\tau}(\vec{x})$.
+  
+\end{frame}
+
+%======================================================================
+\section{Classification}
+%======================================================================
+
+\begin{frame}{Classification}
+  
+  Next we move to \alert{classification}.
+
+  \medskip
+
+  We still have a training set $(\vec{x}^{(i)},y^{(i)})_{i \in 1..m}$
+  and a hypothesis $h_{\vec{\theta}}(\vec{x})$, but now the values
+  $y^{(i)}$ can take on are a small number of discrete values.
+
+  \medskip
+
+  These discrete values could be \alert{unordered} (cat, dog, mouse)
+  or \alert{ordered} (small, medium, large).
+
+  \medskip
+
+  We'll first consider \alert{binary classification} in which $y^{(i)}
+  \in \{ 0, 1 \}$.
+
+  \medskip
+  
+  Think of some examples of binary classification:
+  \begin{itemize}
+  \item Classifying an image as a cat or a dog.
+  \item Classifying an email as spam or non-spam.
+  \item Classifying a university degree as fake or legitimate.
+  \item And on and on ...
+  \end{itemize}
+
+  \medskip
+
+  Sometimes class 1 will be called \alert{positive} and class 0 will
+  be called \alert{negative}.
+  
+\end{frame}
+
+
+\begin{frame}{Classification}{Example}
+
+  A great example of classification is deciding whether an email is
+  \alert{spam or not spam}.
+
+  \medskip
+
+  Suppose we read thousands of email messages, manually divvyed them
+  up into a \texttt{spam} and a \texttt{email} folder, and counted the
+  \alert{frequency of each word and punctuation mark} in each message.
+
+  \medskip
+
+  We might get data like this for the words and characters with the
+  largest average difference between \texttt{spam} and \texttt{email}
+  (Hastie et al., 2016):
+
+  \begin{center}
+    \scriptsize
+    \begin{tabular}{lccccccccccc}
+      \hline & \texttt{george} & \texttt{you} & \texttt{your} &
+      \texttt{hp} & \texttt{free} & \texttt{hp1} & \texttt{!} &
+      \texttt{our} & \texttt{re} & \texttt{edu} & \texttt{remove}
+      \\
+      \hline
+      spam & 0.00 & 2.26 & 1.38 & 0.02 & 0.52 & 0.01 & 0.51 &
+      0.51 & 0.13 & 0.01 & 0.28 \\
+      email & 1.27 & 1.27 & 0.44 & 0.90 & 0.07 & 0.43 & 0.11 & 0.18 & 0.42 & 0.29 & 0.01 \\ \hline
+    \end{tabular}
+  \end{center}
+
+Each training vector $\vec{x}^{(i)}$ would contain the frequency of the tokens
+\texttt{george}, \texttt{you},
+and so on in one document. The corresponding $y^{(i)}$ might
+be 0 for email and 1 for spam.
+
+\end{frame}
+
+%======================================================================
+\section{Logistic regression}
+%======================================================================
+
+\begin{frame}{Logistic regression}{Hypothesis space}
+
+  Given what we know so far, the simplest thing to do might be to
+  ignore the fact that the $y^{(i)}$'s only come in two values and use
+  linear regression with the values 0 and 1.
+
+  \medskip
+
+  Given a query value for $\vec{x}$, then, we might answer ``1'' if
+  $h_{\vec{\theta}}(\vec{x}) \ge 0.5$ and ``0'' otherwise.
+  
+  \medskip
+
+  This won't work very well!
+
+  \medskip
+
+  Improvement: let's change the form of $h$ to constrain
+  it to the range $[0..1]$:
+  \[ h_{\vec{\theta}}(\vec{x}) = g(\vec{\theta}^\top \vec{x}) = \frac{1}{1+e^{-\vec{\theta}^\top \vec{x}}}. \]
+  Here the function
+  \[ g(z) = \frac{1}{1 + e^{-z}} \]
+  is called the \alert{logistic sigmoid function} or just the
+  \alert{sigmoid function}.
+
+\end{frame}
+
+
+\begin{frame}[fragile]
+  \frametitle{Logistic regression}
+  \framesubtitle{Logistic sigmoid}
+
+ \begin{columns}
+
+ \column{2in}
+
+\begin{tiny}
+\begin{lstlisting}
+import numpy
+import matplotlib.pyplot as plt
+
+def f(z):
+    return 1/(1+numpy.exp(-z))
+
+z = numpy.arange(-5, 5, 0.1)
+plt.plot(z, f(z), 'b')
+plt.xlabel('z')
+plt.ylabel('g(z)')
+plt.title('Logistic sigmoid function')
+\end{lstlisting}
+\end{tiny}
+
+\column{2in}
+
+\myfig{2.5in}{logistic}{}
+  
+  \end{columns}
+
+\end{frame}
+
+
+\begin{frame}{Logistic regression}{Derivative of the sigmoid function}
+
+  To optimize a cost function involving the logistic sigmoid, we'll
+  need to know its derivative. Here's a nice trick:
+
+  \begin{eqnarray}
+    g'(z) & = & \frac{d}{dz} \frac{1}{1+e^{-z}} \nonumber \\
+    & = & \frac{1}{(1+e^{-z})^2}(e^{-z}) \nonumber \\
+    & = & \frac{1}{1+e^{-z}} \cdot \left(\frac{1+e^{-z}-1}{1+e^{-z}}\right) \nonumber \\
+    & = & g(z)(1-g(z)) \nonumber
+  \end{eqnarray}
+  
+\end{frame}
+
+
+\begin{frame}{Logistic regression}{Cost function}
+
+  So far we have seen
+  \begin{itemize}
+  \item Training set. We are currently limiting ourselves to \alert{binary} classification.
+  \item The form of the hypothesis $h_{\vec{\theta}}(\vec{x}) = g(\vec{\theta}^\top \vec{x})$.
+  \end{itemize}
+
+  What else do we need? A cost function and a method to minimize that cost.
+
+  \medskip
+
+  Since least squares doesn't make sense for classification, we'll
+  instead \alert{maximize the likelihood} (actually the log likelihood)
+  of $\vec{\theta}$.
+
+  \medskip
+
+  (Our cost function, then, will be negative log likelihood.)
+  
+\end{frame}
+
+
+\begin{frame}{Logistic regression}{Likelihood function}
+
+  The likelihood of $\vec{\theta}$ is
+  \begin{eqnarray}
+    L(\vec{\theta}) & = & p(\vec{y} \mid \mat{X} ; \vec{\theta}) \nonumber \\
+    & = & \prod_{i=1}^m p(y^{(i)} \mid \vec{x}^{(i)} ; \vec{\theta}) .\nonumber
+  \end{eqnarray}
+
+  How should we model $p(y^{(i)} \mid \vec{x}^{(i)} ; \vec{\theta})$?
+
+  \medskip
+
+  It should be \alert{maximal} when our prediction
+  $h_{\vec{\theta}}(\vec{x}^{(i)})$ is \alert{correct} and
+  \alert{minimal} when the prediction is \alert{incorrect}.
+
+\end{frame}
+
+
+\begin{frame}{Logistic regression}{Likelihood function}
+
+  In logistic regression we assume
+  \[ p(y \mid \vec{x} ; \vec{\theta}) = \begin{cases}
+    h_{\vec{\theta}}(\vec{x}) & y=1 \\
+    1-h_{\vec{\theta}}(\vec{x}) & y=0 \\    
+  \end{cases} \]
+  That is, $h_{\vec{\theta}}(\vec{x})$ models $p(y=1 \mid \vec{x})$.
+
+  \medskip
+
+  [Discuss why this is reasonable.]
+
+  \medskip
+
+  A compact representation of the equation:
+  \[ p(y \mid \vec{x} ; \vec{\theta}) = (h_{\vec{\theta}}(\vec{x}))^y(1-h_{\vec{\theta}}(\vec{x}))^{1-y} \]
+
+\end{frame}
+
+
+\begin{frame}{Logistic regression}{Likelihood function}
+
+  We thus obtain
+  \begin{eqnarray}
+    L(\vec{\theta}) & = & \prod_{i=1}^m p(y^{(i)} \mid \vec{x}^{(i)} ; \vec{\theta}) \nonumber \\
+    & = & \prod_{i=1}^m (h_{\vec{\theta}}(\vec{x}^{(i)}))^{y^{(i)}}(1-h_{\vec{\theta}}(\vec{x}^{(i)}))^{1-y^{(i)}} \nonumber
+  \end{eqnarray}
+
+  and the log likelihood is
+  \begin{eqnarray}
+    \ell(\vec{\theta}) & = & \log L(\vec{\theta}) \nonumber \\
+    & = & \sum_{i=1}^m y^{(i)} \log h_{\vec{\theta}}(\vec{x}^{(i)}) + (1-y^{(i)})\log (1-h_{\vec{\theta}}(\vec{x}^{(i)})),
+    \nonumber 
+  \end{eqnarray}
+  
+\end{frame}
+
+
+\begin{frame}{Logistic regression}{Maximizing the likelihood function}
+
+  To find the maximum of $\ell(\vec{\theta})$, we first need to find
+  $\nabla_{\ell}(\vec{\theta})$.
+
+  \medskip
+
+  We won't have a closed form solution for
+  $\nabla_{\ell}(\vec{\theta}) = \vec{0}$ so instead we'll need to use
+  gradient ascent.
+
+  \medskip
+
+  Let's first try the \alert{stochastic} version of gradient ascent in
+  which we assume the training set is just a single pair
+  $(\vec{x},y)$.
+
+\end{frame}
+
+
+\begin{frame}{Logistic regression}{Maximizing the likelihood function}
+
+  \[ \frac{\partial}{\partial \theta_j} \ell(\vec{\theta}) =
+  \left( y \frac{1}{g(\vec{\theta}^\top \vec{x})} - (1-y)\frac{1}{1-g(\vec{\theta}^\top \vec{x})} \right) \frac{\partial}{\partial \theta_j}g(\vec{\theta}^\top \vec{x}). \]
+
+  Since
+  \[ \frac{\partial}{\partial \theta_j}g(\vec{\theta}^\top \vec{x}) =
+  g(\vec{\theta}^\top\vec{x})(1-g(\vec{\theta}^\top \vec{x})) \frac{\partial}{\partial \theta_j}(\vec{\theta}^\top \vec{x}), \]
+
+  we obtain
+  \begin{eqnarray}
+    \frac{\partial}{\partial \theta_j} \ell(\vec{\theta}) & = &
+    \left( y (1-g(\vec{\theta}^\top \vec{x})) - (1-y)g(\vec{\theta}^\top \vec{x}) \right) x_j \nonumber \\
+    & = & (y-h_{\vec{\theta}}(\vec{x})) x_j .\nonumber
+  \end{eqnarray}
+
+  Therefore
+  \[ \nabla_\ell(\vec{\theta}) = (y-h_{\vec{\theta}}(\vec{x}))\vec{x}. \]
+    
+\end{frame}
+
+
+\begin{frame}{Logistic regression}{Stochastic gradient ascent rule}
+
+  We thus get the stochastic gradient ascent rule for logistic regression:
+  \[ \vec{\theta}^{(n+1)} \leftarrow \vec{\theta}^{(n)} + \alpha(y^{(i)} -h_{\vec{\theta}}(\vec{x}^{(i)}))\vec{x}^{(i)}. \]
+
+  Does this look familiar? Take a look at page 23!
+
+  \medskip
+
+  Note that the update is not exactly the same, as
+  $h_{\vec{\theta}}(\vec{x})$ is not the same.
+  
+  \medskip
+
+  Still, it is amazing that we get similar update rules for
+  \begin{itemize}
+  \item Linear regression with least squares
+  \item Linear regression with maximum likelihood
+  \item Logistic regression with maximum likelihood
+  \end{itemize}
+
+  We will see how generalized linear models unify these seemingly
+  different methods.
+  
+\end{frame}
+
+
+\begin{frame}{Logistic regression}{Relationship to the perceptron}
+
+  \begin{columns}
+
+    \column{2.2in}
+
+    \myfig{2in}{mark-1}{Mark I Perceptron Machine (Wikipedia)}
+
+    \column{2.3in}
+    
+    In 1957, Rosenblatt conceived of the \alert{perceptron}, a
+    physical machine implementing the classification function
+    
+    \[ h_{\vec{\theta}}(\vec{x}) = g(\vec{\theta}^\top \vec{x}) \]
+
+    with
+
+    \[ g(z) = \begin{cases} 1 & z \ge 0 \\ 0 & z < 0 \end{cases} .\]
+
+  \end{columns}
+  
+\end{frame}
+
+
+\begin{frame}{Logistic regression}{Relationship to the perceptron}
+
+  The \alert{perceptron learning algorithm} also used the update rule
+  \[ \vec{\theta}^{(n+1)} \leftarrow \vec{\theta}^{(n)} + \alpha(y^{(i)} -h_{\vec{\theta}}(\vec{x}^{(i)}))\vec{x}^{(i)}. \]
+
+  \medskip
+
+  Note that this is also different from the logistic and linear regression
+  rules since $h_{\vec{\theta}}(\vec{x})$ is in this case a hard threshold
+  classifier without any probabilistic interpretation.
+
+\end{frame}
+
+
+\begin{frame}{Logistic regression}{Relationship to the perceptron}
+
+  Rosenblatt was extremely optimistic about the perceptron (the first
+  ``neural network''), predicting it may in the future learn and
+  translate languages.
+
+  \medskip
+
+  Minsky and Papert's (1969) \textit{Perceptrons} critiqued the power
+  of the perceptron and helped kill neural network research for many
+  years.
+
+  \medskip
+
+  Neural network research later went through two ``rebirths:''
+  \begin{itemize}
+  \item Rumelhart, Hinton, and Williams (1986): backpropagation
+  \item Krizhevsky, Sutskever, and Hinton (2012): AlexNet
+  \end{itemize}
+
+  \medskip
+
+  We're thus in the third cycle of possibly over-hyped expectations
+  about neural networks!
+  
+\end{frame}
+
+
+\begin{frame}{Logistic regression}{Netwon's method}
+
+  We are now familiar with solving supervised learning problems through
+  \begin{itemize}
+  \item Direct solution of $\nabla_J(\vec{\theta}) =  \vec{0}$ or
+    $\nabla_\ell(\vec{\theta}) =  \vec{0}$
+  \item Gradient descent on a cost function $\vec{\theta} \leftarrow
+    \vec{\theta} - \alpha \nabla_J(\vec{\theta})$
+  \item Gradient ascent on a log likelihood function $\vec{\theta}
+    \leftarrow \vec{\theta} + \alpha \nabla_\ell(\vec{\theta})$
+  \end{itemize}
+
+  We've seen that the gradient methods are not very efficient. Our
+  jump will usually either \alert{undershoot} or \alert{overshoot}
+  depending on the local gradient and our distance from the minimum.
+
+  \medskip
+
+  \alert{Newton's method} is a faster iterative method for finding the
+  zero of an aribtrary nonlinear function.
+
+\end{frame}
+
+
+\begin{frame}{Logistic regression}{Netwon's method}
+
+  The update rule in Netwon's method (for a 1D function) is
+  \[ \theta^{(n+1)} \leftarrow \theta^{(n)} - \frac{f(\theta)}{f'(\theta)}. \]
+  This corresponds to finding the \alert{intersection of the tangent to $f(\theta)$ with the line $y=0$}:
+
+  \myfig{4in}{newton}{Ng, CS229 lecture note set \#1}
+
+  \medskip
+
+  See animated Newton's method examples online, e.g. at
+  \url{http://www.cs.uleth.ca/~holzmann/notes/NewtonsMethod/}
+  
+\end{frame}
+
+
+\begin{frame}{Logistic regression}{Netwon's method}
+
+  Note, however, that in our optimization problems, we don't want to
+  find a zero of the objective function; we want to find the
+  \alert{minimum or maximum}.
+
+  \medskip
+
+  Luckily the problem is easily solved: \alert{find the minimum or maximum
+  of $J(\vec{\theta})$ by finding the zero of $\nabla_J(\vec{\theta})$}.
+
+  \medskip
+
+  \alert{Exercise}: use Newton's method to find the minimum of
+  \[ f(x) = (x-2)^2+1 \]
+  beginning from $x_0 = 0$. How many iterations are required?
+  Check by inspecting the function or solving $f'(x)=0$.
+
+\end{frame}
+
+
+\begin{frame}{Logistic regression}{Netwon's method}
+
+  For the logistic regression problem, then, instead of slowly
+  climbing the gradient of $\ell(\vec{\theta})$, we can use Newton's
+  method to \alert{find the zero of $\nabla_\ell(\vec{\theta})$}.
+
+  \medskip
+
+  In 1D, we would have
+  \[ \theta \leftarrow \theta - \frac{\ell'(\theta)}{\ell''(\theta)} .\]
+  In multiple dimensions, the Newton-Raphson generalization of Newton's rule is
+  \[ \vec{\theta} \leftarrow \vec{\theta} - (\mat{H}_\ell(\vec{\theta}))^{-1} \nabla_\ell(\vec{\theta}) .\]
+
+  The matrix
+  \[ \mat{H}_\ell(\vec{\theta}) = \begin{bmatrix}
+    \frac{\partial^2}{\partial \theta_0 \theta_0}\ell(\vec{\theta}) &
+    \frac{\partial^2}{\partial \theta_0 \theta_1}\ell(\vec{\theta}) &
+    \cdots \\
+    \frac{\partial^2}{\partial \theta_1 \theta_0}\ell(\vec{\theta}) &
+    \frac{\partial^2}{\partial \theta_1 \theta_1}\ell(\vec{\theta}) &
+    \cdots \\
+    \vdots & \vdots & \ddots   
+  \end{bmatrix}
+  \]
+  of second derivatives
+  is called the \alert{Hessian} of $\ell(\vec{\theta})$.
+
+\end{frame}
+
+
+\begin{frame}{Logistic regression}{Netwon's method}
+
+  \alert{Exercise}: recalling that for a one-pair training set,
+  \[ \frac{\partial}{\partial \theta_j} \ell(\vec{\theta}) =
+    (y-h_{\vec{\theta}}(\vec{x})) x_j ,\]
+  find $\mat{H}_\ell(\vec{\theta})$.
+  
+%  \begin{eqnarray}
+%    \frac{\partial}{\partial \theta_j \theta_k}\ell(\vec{\theta}) & = &
+%    x_j x_k \frac{e^{\theta^\top \vec{x}}}{(1+e^{\theta^\top \vec{x}})^2} \nonumber \\
+%    & = & x_j x_k \frac{1+e^{\theta^\top \vec{x}}-1}{(1+e^{\theta^\top \vec{x}})^2} \nonumber \\
+%    & = & x_j x_k (h_{\vec{\theta}}(\vec{x}) - h_{\vec{\theta}}(\vec{x})^2) \nonumber \\
+%    & = & x_j x_k h_{\vec{\theta}}(\vec{x}) (1 - h_{\vec{\theta}}(\vec{x})) \nonumber 
+%  \end{eqnarray}
+
+  \medskip
+  
+  In PS2, you will implement the batch Newton's method for logistic
+  regression in Python.
+  
+\end{frame}
+
+%======================================================================
+\section{Generalized linear models}
+%======================================================================
+
+\begin{frame}{Generalized linear models}{Introduction}
+
+  In \alert{linear regression}, we observe a random variable $y$
+  assumed to be drawn from a Gaussian distribution depending linearly
+  on a random vector $\vec{x}$ drawn from some population with
+  conditional density
+  \[ p(y \mid \vec{x} ; \vec{\theta}) = {\cal N}(\vec{\theta}^\top \vec{x}, \sigma^2) .\]
+
+  \medskip
+
+  In \alert{logistic regression}, we observe a random variable $y$
+  assumed to be drawn from a Bernoulli distribution\footnote{Bernoulli
+    just means $y$ is sampled so that $y=1$ with probability $p$ and
+    $y=0$ with probability $1-p$.} depending on a random vector $\vec{x}$
+  drawn from some population with conditional density
+  \[ p(y \mid \vec{x} ; \vec{\theta}) = \textrm{Bernoulli}(g(\vec{\theta}^\top \vec{x})) .\]
+
+  \medskip
+
+  We'll see that these are both \alert{generalized linear models} (GLMs).
+
+\end{frame}
+
+
+\begin{frame}{Generalized linear models}{Exponential family}
+
+  To understand GLMs we need to understand the \alert{exponential
+    family} of distributions. Following Ng, a class of distributions
+  is in the exponential family if it can be written in the form
+  \[ p(y ; \vec{\eta}) = b(y) e^{(\vec{\eta}^\top T(y)-a(\vec{\eta}))},\]
+  where
+  \begin{itemize}
+  \item $\vec{\eta}$ is the \alert{natural parameter} or
+    \alert{canonical parameter} of the distribution,
+  \item $T(y)$ is the \alert{sufficient statistic} (we normally use
+    $T(y)=y$), and
+  \item $a(\vec{\eta})$ is the \alert{log partition function}. We use
+    $e^{-a(\vec{\eta})}$ just to normalize the distribution to have a
+    sum or integral of 1.
+  \item $b(y)$ is an arbitrary scalar function of $y$.
+  \end{itemize}
+
+  \medskip
+
+  Each choice of $T$, $a$, and $b$ defines a \alert{family} (set) of
+  distributions parameterized by $\vec{\eta}$.
+ 
+\end{frame}
+
+
+\begin{frame}{Generalized linear models}{Exponential family: Bernoulli}
+
+  The Gaussian and Bernoulli distributions are both exponential family distributions.
+
+  \medskip
+
+  If $y$ is $\textrm{Bernoulli}(\phi)$, then $p(y = 1 ; \phi) = \phi$ and
+  $p(y=0 ; \phi) = 1-\phi$.
+
+  \medskip
+
+  We can rewrite (using the substitution $z = e^{\log z}$)
+  \begin{eqnarray}
+    p(y ; \phi) & = & \phi^y (1-\phi)^{1-y} \nonumber \\
+    & = & e^{(y \log \phi + (1-y)\log(1-\phi))} \nonumber \\
+    & = & e^{(\log{\frac{\phi}{1-\phi}})y + \log{(1-\phi)}} \nonumber
+  \end{eqnarray}
+
+  assigning $\vec{\eta}=[\log{\frac{\phi}{1-\phi}}]$, $T(y)=y$,
+  $a(\vec{\eta}) = \log(1+e^{\vec{\eta}})$, and $b(y)=1$, we see that
+  $p(y ; \phi)$ is in the exponential family.
+  
+\end{frame}
+
+
+\begin{frame}{Generalized linear models}{Exponential family: Gaussian}
+
+  For the 1D Gaussian, assuming for now that $\sigma^2 = 1$, we obtain
+  \begin{eqnarray}
+    p(y ; \mu) & = & \frac{1}{\sqrt{2\pi}}e^{-\frac{1}{2}(y-\mu)^2} \nonumber \\
+    & = & \frac{1}{\sqrt{2\pi}}e^{-\frac{1}{2}y^2}e^{\mu y - \frac{1}{2}\mu^2} \nonumber
+  \end{eqnarray}
+
+  If we assign $\eta = \mu$, $T(y) = y$, $a(\eta) = \mu^2/2 =
+  \eta^2/2$, and $b(y) = (1/\sqrt{2\pi})e^{-y^2/2}$, we see that the
+  Gaussian is in the exponential family as well.
+  
+\end{frame}
+
+
+\begin{frame}{Generalized linear models}{Exponential family}
+
+  Other members of the exponential family useful for machine learning:
+  \begin{itemize}
+  \item \alert{Multinomial}, for $n$-class classification problems
+  \item \alert{Poisson}, for modeling count data
+  \item \alert{Gamma} and \alert{exponential}, for continuous non-negative random variables like time intervals
+  \item \alert{Beta} and \alert{Dirichlet} for distributions over probabilities
+  \item and more...
+  \end{itemize}
+
+  If $y$ is in the exponential family given $\vec{x}$ and
+  $\vec{\theta}$, we can apply the same procedure (the GLM recipe) to
+  come up with a model.
+
+\end{frame}
+
+
+\begin{frame}{Generalized linear models}{Assumptions}
+
+  The GLM makes three assumptions:
+  \begin{enumerate}
+  \item $p(y \mid \vec{x} ; \vec{\theta}) =
+    \textrm{ExponentialFamily}(\vec{\eta})$.
+  \item Given $\vec{x}$, we would like to predict an expected value
+    of $T(y)$ given $\vec{x}$.
+  \item $\vec{\eta}$ is linear in $\vec{x}$, i.e., $\eta_i = \vec{\theta}_i^\top \vec{x}$.
+  \end{enumerate}
+
+  Assumption 2 means that we want to learn a hypothesis function
+  $h(\vec{x}) = E[y\mid \vec{x}].$
+
+  \medskip
+
+  For logistic regression, this would be
+  \begin{eqnarray}
+    h_{\vec{\theta}}(\vec{x}) & = & E[y \mid \vec{x} ; \vec{\theta} ] \nonumber \\
+    & = & 0 \cdot p(y=0 \mid \vec{x}; \vec{\theta}) + 1 \cdot p(y = 1 \mid \vec{x};\vec{\theta}) \nonumber \\
+    & = &     p(y=1 \mid \vec{x};\vec{\theta}) \nonumber
+  \end{eqnarray}
+  
+\end{frame}
+
+
+\begin{frame}{Generalized linear models}{Linear regression as a GLM}
+
+  In the linear regression setting, if we apply the GLM assumptions with
+  the Gaussian distribution, we obtain
+  \[ y \sim {\cal N}(\mu, \sigma^2), \]
+  and $h_{\vec{\theta}}(\vec{x})$ needs to be a prediction of $T(y)$
+  given $\vec{x}$ and $\vec{\theta}$.
+
+  \medskip
+  
+  We already found that the Gaussian is an exponential family distribution with
+  natural parameter $\eta = \mu$.
+
+  \medskip
+
+  Since $\eta = \vec{\theta}^\top \vec{x}$, letting $T(y)=y$, we obtain
+  \begin{eqnarray}
+    h_{\vec{\theta}}(\vec{x}) & = & E[y \mid \vec{x} ; \vec{\theta} ] \nonumber \\
+    & = & \mu \nonumber \\
+    & = & \eta \nonumber \\
+    & = & \vec{\theta}^\top \vec{x} .\nonumber
+  \end{eqnarray}
+  
+\end{frame}
+
+
+\begin{frame}{Generalized linear models}{Linear regression as a GLM}
+
+  So now we have a new justification for the least squares approach to
+  estimate a relationship between a continuous variable $y$ and a
+  feature vector $\vec{x}$.
+
+  \medskip
+
+  If we assume $y$ given $\vec{x}$ is Gaussian with some mean $\mu$,
+  the GLM approach states that we should use
+  \[ h_{\vec{\theta}}(\vec{x}) = \vec{\theta}^\top \vec{x} .\]
+
+  Then, given a training set $(\mat{X},\vec{y})$, we find that the
+  $\vec{\theta}$ maximizing $p(\vec{y} \mid \mat{X} ; \theta)$ is
+  $(\mat{X}^\top\mat{X})^{-1}\mat{X}^\top\vec{y}$.
+
+\end{frame}
+
+
+\begin{frame}{Generalized linear models}{Logistic regression as a GLM}
+
+  Now consider the logistic regression setting. We have a two classes,
+  0 and 1.
+
+  \medskip
+
+  If we assume $y \sim \textrm{Bernoulli}(\phi)$ and take the GLM
+  approach, we cast the Bernoulli distribution as a member of the
+  exponential family, obtaining
+  \[ \phi = \frac{1}{1+e^{-\eta}}. \]
+
+  We then try to predict the expectation of $T(y) = y$ given
+  $\vec{x}$:
+  \begin{eqnarray}
+    h_{\vec{\theta}}(\vec{x}) & = & E[y \mid \vec{x} ; \vec{\theta}] \nonumber \\
+    & = & \phi \nonumber \\
+    & = & \frac{1}{1+e^{-\eta}} \nonumber \\
+    & = & \frac{1}{1+e^{-\vec{\theta}^\top \vec{x}}} .\nonumber
+  \end{eqnarray}
+  Try to justify each step here!
+   
+\end{frame}
+
+
+\begin{frame}{Generalized linear models}{Logistic regression as a GLM}
+
+  Now we understand why we take the logistic sigmoid
+  \[ \frac{1}{1+e^{-\vec{\theta}^\top\vec{x}}} \]
+  as a model for $p(y=1 \mid \vec{x} ; \vec{\theta})$ in logistic
+  regression: it is the natural consequence of \alert{choosing a GLM to model
+  $y$ as a Bernoulli random variable depending on $\vec{x}$}.
+  
+\end{frame}
+
+
+\begin{frame}{Generalized linear models}{Other models}
+
+  Why should we care about all this? We already know how to do linear
+  and logistic regression!!
+
+  \medskip
+
+  The reason is that the GLM approach applies to \alert{any
+    distribution} and usually leads to \alert{elegant learning rules}.
+
+  \medskip
+
+  So when faced with a new learning problem, your baseline approach should be
+  \begin{enumerate}
+  \item Come up with a model for the conditional distribution of $y$
+    given $\vec{x}$.
+  \item Cast that conditional distribution as a member of the exponential family to determine what $\vec{\eta}$ is.
+  \item Replace $\vec{\eta}_i$ with $\vec{\theta}_i^\top \vec{x}$.
+  \item Come up with a procedure to maximize $\ell(\vec{\theta})$ for
+    a training set.
+  \end{enumerate}
+    
+\end{frame}
+
+
+\begin{frame}{Generalized linear models}{Example: multinomial distribution}
+
+  As an example, consider the generalization of the logistic
+  regression problem to $k$ classes, i.e., ${\cal Y} = \{ 1, 2,
+  \ldots, k \}$.
+
+  \medskip
+
+  The natural generalization of the Bernoulli distribution is the
+  \alert{multinomial distribution} with parameters $\phi_1, \ldots \phi_{k-1}$.
+
+  \medskip
+
+  [We leave out the redundant $\phi_k = 1 - \sum_{i=1}^{k-1} \phi_i$.]
+
+  \medskip
+
+  To model the multinomial as a member of the exponential family,
+  there is a rather involved derivation. See Bishop (2006) or Ng's
+  lecture notes for details.
+  
+\end{frame}
+
+
+\begin{frame}{Generalized linear models}{Example: multinomial distribution}
+
+  The upshot: we can obtain $\eta_i = \log\frac{\phi_i}{\phi_k}$, which can be
+  inverted to obtain
+  \[ \phi_i = \frac{e^{\eta_i}}{\sum_{j=1}^k e^{\eta_j}}, \]
+  which is called the \alert{softmax function} and is the multi-class
+  generalization of the logistic sigmoid.
+
+\end{frame}
+
+
+\begin{frame}{Generalized linear models}{Example: multinomial distribution}
+
+  Our prediction is thus
+  \begin{eqnarray}
+    p(y=i \mid \vec{x} ; \vec{\Theta}) & = & \phi_i \nonumber \\
+    & = & \frac{e^{\eta_i}}{\sum_{j=1}^k e^{\eta_j}} \nonumber \\
+    & = & \frac{e^{\vec{\theta}_i^\top\vec{x}}}{\sum_{j=1}^k e^{\vec{\theta}_j^\top\vec{x}}} \nonumber
+  \end{eqnarray}
+
+  \medskip
+
+  \alert{Exercise}: play with the softmax function to see how it
+  transforms log odds ratios into a probability mass distribution.
+
+  \medskip
+
+  See Bishop (2006) or Ng for the log likelihood function. As before,
+  we can use gradient descent or Newton's method to find the optimal
+  $\vec{\Theta}$.
+
+\end{frame}
+
+
+\begin{frame}{Generalized linear models}{Summary}
+
+  To summarize the GLM approach:
+  \begin{itemize}
+    \item \textbf{Assumption 1}: the distribution $p(y \mid \vec{x} ;
+      \vec{\theta})$ \alert{is a member of the exponential family}
+      with natural parameter(s) $\vec{\eta}$.
+    \item \textbf{Assumption 2}: \alert{our goal is to predict}, given
+      an input $\vec{x}$, \alert{the expectation} $E[T(y) \mid \vec{x}
+        ; \vec{\theta}]$. $T$ is a transformation of $y$ that comes
+      from modeling $p(y \mid \vec{x} ; \vec{\theta})$ as a member of
+      the exponential family.
+    \item \textbf{Assumption 3}: the natural parameter(s) of the
+      distribution $\vec{\eta}$ are \alert{linear in $\vec{x}$}, i.e.,
+      $\eta_i = \vec{\theta}_i^\top\vec{x}$.
+  \end{itemize}
+
+  If you are willing to make these assumptions, you end up with a
+  ``concave'' log likelihood function, which means that \alert{any
+    local maximum is a global maximum}.
+
+  \medskip
+
+  A GLM should thus be a good first thing to try when you are faced
+  with a machine learning problem you don't already have an algorithm
+  for.
+  
+\end{frame}
+
+%======================================================================
+\section{Generative learning algorithms}
+%======================================================================
+
+\begin{frame}{Generative learning algorithms}{Generative vs. discriminative}
+
+  So far, the methods we have tried attempt to learn
+  $p(y \mid \vec{x})$ directly.
+
+  \medskip
+
+  Given an input $\vec{x}$, we try to map directly to the output $y$.
+
+  \medskip
+  
+  Any algorithm that does this is called a \alert{discriminative}
+  learning algorithm.
+
+  \medskip
+
+  Another class of algorithms instead tries to model $p(\vec{x} \mid
+  y)$ and $p(y)$.
+
+  \medskip
+
+  Such methods are called \alert{generative} learning algorithms.
+  
+\end{frame}
+
+
+\begin{frame}{Generative learning algorithms}{Using Bayes' rule}
+
+  If we can build a model of $p(\vec{x} \mid y)$ and $p(y)$, then
+  \alert{Bayes' rule} tells us that
+  \[ p(y \mid \vec{x}) = \frac{p(\vec{x} \mid y) p(y)}{p(\vec{x})}. \]
+
+  Why don't we care about $p(\vec{x})$?  Let's see...
+
+  \medskip
+
+  First, generative models are most often used for
+  \alert{classification}, not regression.
+
+  \medskip
+  
+  In classification, \alert{$y$ is discrete}, so we have
+  \[ p(\vec{x}) = \sum_i p(\vec{x} \mid y=y_i) p(y=y_i) .\]
+
+  \medskip
+
+  If $y$ is continuous, we just have an integral instead of a sum.
+
+  \medskip
+
+  This shows that if we can model $p(\vec{x} \mid y)$ and $p(y)$,
+  we can obtain $p(y \mid \vec{x})$ without explicitly calculating
+  $p(\vec{x})$.
+
+\end{frame}
+
+
+\begin{frame}{Generative learning algorithms}{Using Bayes' rule}
+
+  We could calculate $p(\vec{x})$ directly. But usually, we want to know
+  \alert{which $y$ maximizes $p(y \mid \vec{x})$}.
+
+  \medskip
+
+  In this case, all we need to do is find
+  \begin{eqnarray}
+    y^* & = & \argmax_{y} p(y \mid \vec{x}) \nonumber \\
+    & = & \argmax_{y} \frac{p(\vec{x} \mid y)p(y)}{p(\vec{x})} \nonumber \\
+    & = & \argmax_y p(\vec{x} \mid y)p(y) \nonumber
+  \end{eqnarray}
+
+  \medskip
+
+  So to perform classification in the generative approach, all we need
+  is models for $p(\vec{x} \mid y)$ and $p(y)$.
+  
+\end{frame}
+
+
+\begin{frame}{Generative learning algorithms}{Gaussian discriminant analysis}
+
+  Let's consider the case where $p(\vec{x} \mid y)$ is a
+  \alert{multivariate Gaussian}.
+
+  \medskip
+
+  A possible example would be ${\cal Y} = \{ \text{male},
+  \text{female} \}$ and ${\cal X} = \Rset^2$ where the features are a
+  person's height and weight.
+
+\end{frame}
+
+
+\begin{frame}{Generative learning algorithms}{Gaussian discriminant analysis}
+
+  The $n$-dimensional multivariate Gaussian distribution has
+  \begin{itemize}
+  \item a \alert{mean vector} $\vec{\mu} \in \Rset^n$
+  \item a \alert{covariance matrix} $\Sigma \in \Rset^{n\times
+    n}$. We require $\Sigma \ge 0$ is symmetric and positive
+    semidefinite.
+  \end{itemize}
+
+  \medskip
+
+  The distribution is written ${\cal N}(\vec{\mu},\Sigma)$ and the
+  density is
+  \[ p(\vec{x} ; \vec{\mu}, \Sigma) = \frac{1}{(2\pi)^{n/2}|\Sigma|^{1/2}}
+    e^{-\frac{1}{2}(\vec{x}-\vec{\mu})^\top \Sigma^{-1}(\vec{x}-\vec{\mu})} . \]
+  
+\end{frame}
+
+
+\begin{frame}{Generative learning algorithms}{Gaussian discriminant analysis}
+
+  If $\vec{X} \sim {\cal N}(\vec{\mu} ; \Sigma)$, then we can write
+  
+  \[ E[\vec{X}] = \int_{\vec{x}} \vec{x} p(\vec{x}; \vec{\mu},\Sigma)
+  d\vec{x} = \vec{\mu} \]
+  and
+  \[ \cov(\vec{X}) = E[(\vec{X}-E[\vec{X}])(\vec{X}-E[\vec{X}])^\top] = \Sigma . \]
+
+  \medskip
+
+  See the handout on the multivariate Gaussian on the course Web site
+  to get an intuition about interpreting the covariance matrix.
+  
+\end{frame}
+
+
+\begin{frame}{Generative learning algorithms}{Gaussian discriminant analysis}
+
+  Now, the GDA model for a 2-class problem:
+  \begin{eqnarray}
+    y & \sim & \textrm{Bernoulli}(\phi) \nonumber \\
+    \vec{x} \mid y = 0 & \sim & {\cal N}(\vec{\mu}_0,\Sigma_0) \nonumber \\
+    \vec{x} \mid y = 1 & \sim & {\cal N}(\vec{\mu}_1,\Sigma_1) \nonumber
+  \end{eqnarray}
+
+  \medskip
+
+  We can then write the distributions:
+  \begin{eqnarray}
+    p(y) & = & \phi^y(1-\phi)^{1-y} \nonumber \\
+    P(x \mid y=0) & = & \frac{1}{(2\pi)^{n/2}|\Sigma|^{1/2}} e^{-\frac{1}{2}(\vec{x}-\vec{\mu}_0)^\top \Sigma_0^{-1} (\vec{x}-\vec{\mu}_0)} \nonumber \\
+      P(x \mid y=1) & = & \frac{1}{(2\pi)^{n/2}|\Sigma|^{1/2}} e^{-\frac{1}{2}(\vec{x}-\vec{\mu}_1)^\top \Sigma_1^{-1} (\vec{x}-\vec{\mu}_1)} \nonumber
+  \end{eqnarray}
+
+\end{frame}
+
+
+\begin{frame}{Generative learning algorithms}{Gaussian discriminant analysis}
+
+  Time to optimize!
+
+  \begin{eqnarray}
+    \ell(\phi,\vec{\mu}_0,\vec{\mu}_1,\Sigma_0,\Sigma_1) & = &
+    \log \prod_{i=1}^m p(\vec{x}^{(i)},y^{(i)};\phi,\vec{\mu}_0,\vec{\mu}_1,
+    \Sigma_0,\Sigma_1) \nonumber \\
+    & = & \log \prod_{i=1}^m p(\vec{x}^{(i)} \mid y^{(i)};\vec{\mu}_0,\vec{\mu}_1,
+    \Sigma_0,\Sigma_1) p(y^{(i)} ; \phi)\nonumber
+  \end{eqnarray}
+
+\end{frame}
+
+
+\begin{frame}{Generative learning algorithms}{Gaussian discriminant analysis}
+
+  It turns out that if we assume $\Sigma_0 = \Sigma_1 = \Sigma$, we obtain
+  the maximum likelihood estimates
+  \begin{eqnarray}
+    \phi & = & \frac{1}{m}\sum_{i=1}^m1\{y^{(i)}=1\} \nonumber \\
+    \vec{\mu}_0 & = & \frac{\sum_{i=1}^m\delta[y^{(i)}=0]\vec{x}^{(i)}}{\sum_{i=1}^m\delta[y^{(i)}=0]} \nonumber \\
+    \vec{\mu}_1 & = & \frac{\sum_{i=1}^m\delta[y^{(i)}=1]\vec{x}^{(i)}}{\sum_{i=1}^m\delta[y^{(i)}=1]} \nonumber \\
+    \Sigma & = & \frac{1}{m} \sum_{i=1}^m(\vec{x}^{(i)}-\vec{\mu}_{y^{(i)}})(\vec{x}^{(i)}-\vec{\mu}_{y^{(i)}})^\top
+  \end{eqnarray}
+
+  Note: I use $\delta[\psi]$ for a version of the \alert{Kronecker
+    delta} function that is 1 if $\psi$ is true and 0 elsewhere.
+  
+\end{frame}
+
+
+\begin{frame}{Generative learning algorithms}{Gaussian discriminant analysis}
+
+  \begin{columns}
+
+    \column{2.5in}
+    
+    \myfig{2.4in}{gda}{Ng, CS229 lecture note set \#2}
+    
+    \column{2.0in}
+    
+    The assumption
+    \[ \Sigma_0 = \Sigma_1 = \Sigma \]
+    turns out to be very convenient.
+
+    \medskip
+    
+    \alert{Exercise:} Given the maximum likelihood estimates
+    previously shown, try to find the set of points $\vec{x}$ for
+    which
+    \[ p(y=1 \mid \vec{x}) = 0.5. \]
+    (It may help to note that this is where $p(\vec{x} \mid y=1 )p(y=1) =
+    p(\vec{x}\mid y=0)p(y=0)$).
+
+  \end{columns}
+  
+\end{frame}
+
+
+\begin{frame}{Generative learning algorithms}{Gaussian discriminant analysis}
+
+  The GDA model is related to the logistic regression model.
+
+  \medskip
+
+  Exercise: show that
+  \[ p(y=1 \mid \vec{x} ; \phi, \Sigma, \mu_0, \mu_1) =
+  \frac{1}{1+e^{-\vec{\theta}^\top \vec{x}}}, \]
+  with $\vec{\theta}$ as a function of $\phi$, $\Sigma$, $\vec{\mu}_0$,
+  $\vec{\mu}_1$.
+
+  \medskip
+
+  GDA and logistic regression have the same form but give different decision boundaries:
+  \begin{itemize}
+  \item GDA will be better (will require less training data to provide
+    accurate predictions) if $p(\vec{x} \mid y)$ is in fact
+    multivariate Gaussian or almost multivariate Gaussian.
+  \item Logistic regression will probably be better if $p(\vec{x} \mid
+    y)$ is definitely non-Gaussian or unknown.
+  \end{itemize}
+    
+\end{frame}
+
+
+\begin{frame}{Generative learning algorithms}{Naive Bayes}
+
+  GDA was an example of a generative classification method for
+  problems in which ${\cal X} = \Rset^n$.
+
+  \medskip
+
+  What if our features have \alert{discrete} values?
+
+  \medskip
+
+  Examples:
+  \begin{itemize}
+  \item Car buying behavior: ${\cal Y} = \{ \text{buy}, \neg\text{buy}
+    \}$, ${\cal X} = \begin{bmatrix} \text{Size}, \text{Color},
+      \text{Gender}, \text{Age} \end{bmatrix}$, $\text{Size} = \{
+    \text{small}, \text{medium}, \text{large} \}$; $\text{Color} = \{
+    \text{red}, \text{blue}, \text{black}, \text{white} \}$;
+    $\text{Gender} = \{ \text{male}, \text{female} \}$; $\text{Age} =
+    \{ \text{0-18}, \text{19-39}, \text{30-39}, \text{40-59},
+    \text{60+} \}$.
+    \item Email spam filter: ${\cal Y} = \{ \text{spam},
+      \neg\text{spam} \}$. ${\cal X} = \{0,1\}^K$, with each variable
+      $x_1,\ldots,x_k$ representing presence/absence of a particular
+      word in a \alert{vocabulary}.
+  \end{itemize}
+  
+\end{frame}
+
+
+\begin{frame}{Generative learning algorithms}{Naive Bayes}
+
+  Whatever $\cal Y$ and $\cal X$ are, a generative model
+  needs a form for
+  $p( y \mid \vec{x} )$.
+
+  \medskip
+  
+  The simplest approach to these problems is to use the \alert{multinomial}
+  distribution over the set of possible outcomes for $\vec{x}$.
+
+  \medskip
+
+  Exercise: How many outcomes for $\vec{x}$ are there for the car
+  buying and spam filter examples?
+
+  \medskip
+
+  The full multinomial model will thus have $2L -1$ parameters
+  for $p(\vec{x} \mid y)$, where $L$ is the number of outcomes for
+  $\vec{x}$, and 1 parameter for $p(y)$, assuming $y$ is binary.
+
+  \medskip
+
+  Is this practical for the car buying example? For the spam example?
+
+\end{frame}
+
+
+\begin{frame}{Generative learning algorithms}{Naive Bayes}
+
+  Naive Bayes attempts to reduce the number of parameters required
+  using the (very strong but very useful) assumption that \alert{the
+    features are conditionally independent given $y$}:
+  \begin{eqnarray}
+    p(\vec{x} \mid y) & = & p(x_1, x_2, \ldots, x_n \mid y) \nonumber \\
+    & = & p(x_1 \mid y) p(x_2 \mid x_1, y) \cdots
+    p(x_n \mid x_1, x_2, \ldots, x_{n-1}, y) \nonumber \\
+    & \approx & \prod_{i=1}^n p(x_i \mid y) \nonumber
+  \end{eqnarray}
+
+  This model requires a set of parameters
+  $\phi_{ij|y=1} = p(x_i = j \mid y = 1)$ and a set of parameters
+  $\phi_{ij|y=0} = p(x_i = j \mid y = 0)$.
+
+  \medskip
+
+  Note that if the variables $x_i$ are binary, we only need two
+  parameters $\phi_{i|y=1} = p(x_i = 1 \mid y = 1)$ and $\phi_{i|y=0}
+  = p(x_i = 1 \mid y = 0)$.
+  
+\end{frame}
+
+
+\begin{frame}{Generative learning algorithms}{Naive Bayes}
+
+  For the case where $x_i$ are binary, we get the joint likelihood
+  \[ {\cal L}(\phi_y, \phi_{i|y=0}, \phi_{i|y=1}) = \prod_{i=1}^m
+  p(\vec{x}^{(i)},y^{(i)}) .\]
+
+  \medskip
+
+  Exercise: verify that maximizing ${\cal L}$ gives maximum likelihood
+  estimates
+  \begin{eqnarray}
+    \phi_{j|y=1} & = &
+    \frac{\sum_{i=1}^m \delta[x_j^{(i)} = 1 \wedge y^{(i)} = 1]}
+         {\sum_{i=1}^m \delta[y^{(i)} = 1]} \nonumber \\
+    \phi_{j|y=0} & = &
+    \frac{\sum_{i=1}^m \delta[x_j^{(i)} = 1 \wedge y^{(i)} = 0]}
+         {\sum_{i=1}^m \delta[y^{(i)} = 0]} \nonumber \\
+    \phi_{y} & = &
+    \frac{\sum_{i=1}^m \delta[y^{(i)} = 1]}
+         {m} \nonumber
+  \end{eqnarray}
+  
+\end{frame}
+
+
+\begin{frame}{Generative learning algorithms}{Naive Bayes}
+
+  If $n$ is large, there may be some features \alert{that do not appear in all
+  combinations with every class}.
+
+  \medskip
+
+  Examples:
+  \begin{itemize}
+  \item The term ``viagra'' might occur only in spam emails.
+  \item In a given period of time, there might not be any customers 18
+    years or younger who bought a car.
+  \end{itemize}
+
+  \medskip
+
+  Suppose we are then faced with an email $\vec{x}$ with the term
+  ''viagra'' or a customer $\vec{x}$ whose age is 0-18.
+
+  \medskip
+
+  Do we predict $p(\text{spam} \mid \vec{x}) = 1$ and
+  $p(\text{buy} \mid \vec{x}) = 0$ ?
+  
+\end{frame}
+
+
+\begin{frame}{Generative learning algorithms}{Naive Bayes}
+
+  \alert{Laplace smoothing} avoids 0-probability issues by adding
+  one pseudo-example to the dataset:
+  \begin{eqnarray}
+    \phi_{j|y=1} & = &
+    \frac{\sum_{i=1}^m \delta[x_j^{(i)} = 1 \wedge y^{(i)} = 1] + 1}
+         {\sum_{i=1}^m \delta[y^{(i)} = 1] + 2} \nonumber \\
+    \phi_{j|y=0} & = &
+    \frac{\sum_{i=1}^m \delta[x_j^{(i)} = 1 \wedge y^{(i)} = 0] + 1}
+         {\sum_{i=1}^m \delta[y^{(i)} = 0] + 2} \nonumber
+  \end{eqnarray}
+
+  This is for binary features (a multi-variate Bernoulli event model).
+
+  \medskip
+
+  See Ng's lecture notes for more information on the
+  \alert{multinomial event model}.
+
+\end{frame}
+
+
+\begin{frame}{Generative learning algorithms}{Naive Bayes}
+
+  So! Reminder:
+  \begin{itemize}
+  \item If you have continuous ${\cal X}$ and continuous ${\cal Y}$
+    your first go-to model is \alert{linear regression}. Consider
+    non-linear transformations of the inputs.
+  \item If you have continuous ${\cal X}$ and discrete ${\cal Y}$ but
+    don't know much about $p(\vec{x} \mid y)$, your first go-to model
+    is \alert{logistic or softmax regression}, or you can come up with
+    a \alert{new GLM} from scratch.
+  \item If you have continuous ${\cal X}$ and discrete ${\cal Y}$ and
+    know something about $p(\vec{x} \mid y)$, model the distribution
+    accurately, as a Gaussian (\alert{GDA}) or build a \alert{new
+      generative model} from scratch.
+  \item If you have discrete ${\cal X}$ and discrete ${\cal Y}$ you
+    should probably start with \alert{naive Bayes} then build up from
+    there.
+  \end{itemize}
+
+  That's it for generative models. Next we'll return to discriminative
+  models with kernel methods and SVMs.
+  
+\end{frame}
+
+%======================================================================
+\section{Support vector machines}
+%======================================================================
+
+\begin{frame}{Support vector machines}{Introduction}
+
+  Thus far, we have studied machine learning models that are
+  relatively easy to analyze and are \alert{optimal}, when the \alert{assumptions} they
+  make are \alert{satisfied}.
+
+  \medskip
+
+  For example, GDA assumes the conditional distribution $p(\vec{x} \mid y)$ is
+  a multivariate Gaussian.
+  
+  \medskip
+
+  What happens when the assumptions are violated?
+
+  \medskip
+
+  Next we look at \alert{support vector machines (SVMs)}, which are more
+  flexible and widely applicable than the method's we've looked at
+  thus far.
+
+  \medskip
+
+  Although deep neural networks have received the most attention very
+  recently, many still believe that the SVM is the best
+  ``off-the-shelf'' supervised classifier.
+  
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{Introduction}
+
+  SVMs are based on the idea of \alert{maximum margin} classification.
+
+  \medskip
+
+  Consider logistic regression, in which we model $p(y=1 \mid \vec{x}
+  ; \vec{\theta})$ by $h_{\vec{\theta}}(\vec{x}) = g(\vec{\theta}^\top
+  \vec{x})$.
+
+  \medskip
+
+  The logistic regression classification rule is
+  \[ y^{pred}(\vec{x}) = \begin{cases} 1 & h_{\vec{\theta}}(\vec{x}) \ge 0.5 \\
+    0 & \text{otherwise} \end{cases} \]
+
+  Informally, our goal should be to find
+  $\vec{\theta}$ such that
+  $\vec{\theta}^\top \vec{x}^{(i)} \gg 0$ for all $i$ with $y^{(i)} = 1$ and
+  $\vec{\theta}^\top \vec{x}^{(i)} \ll 0$ for all $i$ with $y^{(i)} = 0$.
+  
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{Decision boundaries}
+
+  \begin{columns}
+
+    \column{2.2in}
+    
+    \myfig{2in}{classes}{}
+
+    \column{2.3in}
+
+    Suppose the yellow points are training data from class 1 and the
+    cyan points are training data from class 0.
+
+    \medskip
+
+    $\vec{\theta}^\top \vec{x} = 0$ is a \alert{separating hyperplane}
+    or \alert{decision boundary} between the two classes.
+
+    \medskip
+
+    Point A is furthest from the decision boundary.  We should be
+    confident to predict class 1 for point A.
+
+    \medskip
+
+    Point C is more ambiguous.
+
+    \medskip
+
+    This observation will lead to the principle of maximizing the margin.
+
+  \end{columns}
+  
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{Model and notation}
+
+  Next, we'll modify our model a little.
+
+  \medskip
+
+  Rather than classes 0 and 1, we'll make them -1 and +1.
+
+  \medskip
+
+  Rather than $\vec{\theta}^\top \vec{x}$ with implicit $x_0 = 1$, we
+  write $\vec{w}^\top\vec{x} + b$ replacing $\theta_0$ by $b$, making
+  the intercept term explicit.
+
+  \medskip
+
+  The classifier will be
+  \[ h_{\vec{w},b}(\vec{x}) = g(\vec{w}^\top\vec{x}+b) .\]
+  We use the perceptron rule
+  \[ g(z) = \begin{cases} 1 & z \ge 0 \\ -1 & \text{otherwise} \end{cases} \]
+
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{Margin}
+
+  We have the structure of the model. What about the cost/objective function?
+
+  \medskip
+
+  First, we write the \alert{functional margin} of the parameters
+  $\vec{w},b$ wih respect to training example $i$:
+  \[ \hat{\gamma}^{(i)} = y^{(i)}(\vec{w}^\top\vec{x}+b) . \]
+  Convince yourself that $\hat{\gamma}^{(i)}$ is
+  \begin{itemize}
+    \item 0 for training points on
+      the decision boundary,
+    \item negative for incorrectly classified points,
+    \item positive for correctly classified points, and
+    \item larger for correctly classified points further from the
+      boundary.
+  \end{itemize}
+
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{Should we maximize the margin?}
+
+  So $\hat{\gamma}^{(i)}$ seems like a good thing to maximize.
+
+  \medskip
+
+  However, there is one problem with $\hat{\gamma}^{(i)}$ as defined so far.
+
+  \medskip
+
+  \alert{Scaling} $\vec{w}$ and $b$ by an arbitrary factor $\alpha$
+  does not change the decision boundary but does scale the resulting
+  margin by $\alpha$.
+
+  \medskip
+
+  That means $\hat{\gamma}^{(i)}$ could be made artificially large by
+  scaling with a large $\alpha$.
+
+  \medskip
+
+  We will avoid this by constraining $\vec{w}$ to be length 1. Instead
+  of $(\vec{w},b)$, we will use $(\vec{w}/\|\vec{w}\|,b/\|\vec{w}\|)$
+  when calculating the margin.
+
+  \medskip
+
+  This gives us the \alert{geometric margin}
+  \[ \gamma^{(i)} = y^{(i)}\left( \left(\frac{\vec{w}}{\|\vec{w}\|}\right)^\top\vec{x}^{(i)} + \frac{b}{\|\vec{w}\|} \right) \]
+
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{Maximize the minimum margin}
+
+  What should our goal actually be?
+
+  \medskip
+
+  We could think of logistic regression as attempting to maximize a kind
+  of average margin.
+
+  \medskip
+
+  However, SVMs attempt to maximize the \alert{minimum} margin.
+
+  \medskip
+  
+  So we will define the functional margin with respect to an entire training set $S = \{ (\vec{x}^{(i)},y^{(i)}) \}_{i \in 1..m}$ as
+  \[ \gamma = \min_{i\in 1..m} \gamma^{(i)}, \]
+  i.e., the smallest of the margins of the individual
+  training examples.
+
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{The optimization problem}
+
+  OK! Now we know that we'd like to find $\vec{w},b$ according to
+  \[
+  \begin{array}{rl}
+    \max_{\gamma,\vec{w},b} & \gamma \\ \text{subject to} & y^{(i)}(\vec{w}^\top\vec{x}^{(i)} + b) \ge \gamma, i \in 1..m \\ & \| \vec{w} \| = 1.
+  \end{array}
+  \]
+  Only problem: the constraint $\| \vec{w} \| = 1$ is not linear,
+  as would be required by most optimizers.
+
+  \medskip
+
+  Think of the constraint as saying we must find a point on the unit
+  sphere that maximizes $\gamma$. Tricky!
+  
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{The optimization problem}
+
+  First step to improve the formulation of
+  the optimization problem: \alert{move the constraint
+  into the objective}:
+  \[
+  \begin{array}{rl}
+    \max_{\gamma,\vec{w},b} & \frac{\hat{\gamma}}{\| \vec{w} \|} \\
+    \text{subject to} & y^{(i)}(\vec{w}^\top\vec{x}^{(i)} + b) \ge \hat{\gamma}, i \in 1..m .
+  \end{array}
+  \]
+  The good: the constraints are now all \alert{linear}. That is good
+  for standard optimizers.
+
+  \medskip
+
+  New problem: now the objective function $\vec{\hat{\gamma}}/{\|\vec{w}\|}$
+  is itself non-convex.
+
+  \medskip
+
+  Can we fix it?  Well, first let's note that the constraint $\|\vec{w}\|=1$
+  is fairly arbitrary. Actually, any constraint on $\vec{w}$ that prevents
+  the optimizer from scaling $\vec{w}$ to get a bigger margin is enough.
+
+  \medskip
+
+  Other constraints such as $w_1 = 10$ or $\sqrt{w_1^2 + w_2^2} = 3$
+  would be equally good.
+  
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{The optimization problem}
+
+  The particular constraint on $\vec{w},b$ that we will use is a
+  little weird:
+  \[ \hat{\gamma}=1 .\]
+  That is, we will scale $\vec{w},b$ so that the distance of the training
+  point(s) closest to the hyperplane $\vec{w}^\top \vec{x} + b = 0$ is 1.
+
+  \medskip
+
+  Replacing $\hat{\gamma}$ with 1 in our optimization problem, we can
+  obtain
+  \[
+  \begin{array}{rl}
+    \min_{\gamma,\vec{w},b} & \frac{1}{2} \| \vec{w} \|^2 \\
+    \text{subject to} & y^{(i)}(\vec{w}^\top\vec{x}^{(i)} + b) \ge 1, i \in 1..m .
+  \end{array}
+  \]
+
+  Convince yourself that this is a convex optimization problem with
+  linear constraints that ``rule out'' parts of the parameter space as
+  candidate solutions.
+  
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{Quadratic programming problem}
+
+  So! If we want to find the \alert{optimal margin classifier} for a linearly
+  separable data set $\{(y^{(i)},\vec{x}^{(i)})\}_{i \in 1..m}$, all we need to
+  do is use a quadratic programming solver to find $\vec{w},b$ satisfying
+  \[
+  \begin{array}{rl}
+    \min_{\gamma,\vec{w},b} & \frac{1}{2} \| \vec{w} \|^2 \\
+    \text{subject to} & y^{(i)}(\vec{w}^\top\vec{x}^{(i)} + b) \ge 1, i \in 1..m .
+  \end{array}
+  \]
+
+  See the formalization of the 
+  general quadratic programming problem on the
+  next page...
+
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{Quadratic programming problem}
+
+  \begin{block}{The (general) \alert{quadratic programming} problem}
+    Given
+    \begin{itemize}
+    \item $\vec{c} \in \Rset^n$
+    \item $\mat{Q} \in \Rset^{n\times n}$
+    \item $\mat{A} \in \Rset^{m\times n}$
+    \item $\vec{b} \in \Rset^m$
+    \end{itemize}
+    find \[ \begin{array}{rl}
+      \vec{x}^* \in \Rset^n = & \argmin_{\vec{x}} \frac{1}{2} \vec{x}^\top \mat{Q} \vec{x} + \vec{c}^\top \vec{x} \\
+      & \text{subject to} \;\;\; \mat{A}\vec{x}\le \vec{b}
+    \end{array} \]
+  \end{block}
+
+  [Check that our problem can be cast as a QP problem.]
+  
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{Quadratic programming problem}
+
+  There are many standard QP solvers.
+
+  \medskip
+
+  For example, in Python, try \texttt{cvxopt}:
+  \begin{itemize}
+  \item \texttt{sudo pip3 install cvxopt}
+  \end{itemize}
+  See the sample Jupyter notebook on the course home page.
+
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{The dual optmization problem}
+
+  Turns out that although we could stop here, QP is \alert{not efficient in
+    high dimensional spaces}.
+
+  \medskip
+
+  We will see later that we want to build SVMs in high dimensional
+  feature spaces in order to get interesting non-linear classification
+  boundaries in the original attribute space.
+
+  \medskip
+
+  So instead of throwing our direct
+  SVM problem at a QP solver, we will reformulate
+  the problem in a way that it can be solved efficiently in high dimensional
+  spaces.
+
+  \medskip
+
+  This requires a discussion of Lagrangian optimization.
+
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{Lagrangian optmization}
+
+  Let's consider a 2-dimensional example where we want to maxmimize
+  $f(x,y)$ subject to $g(x,y)=0$:
+
+  \myfig{3.2in}{lagrange}{\url{https://en.wikipedia.org/wiki/Lagrange_multiplier}}
+
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{Lagrangian optmization}
+
+  We introduce a new variable $\lambda$ called a \alert{Lagrange multiplier}
+  and consider the \alert{Lagrange function} or \alert{Lagrangian}
+  \[ {\cal L}(x,y,\lambda) = f(x,y) - \lambda g(x,y). \]
+  It turns out that if $(x^*,y^*)$ is a maximum of $f(x,y)$ satisfying
+  $g(x^*,y^*)=0$, then there exists a $\lambda^*$ such that
+  $(x^*,y^*,\lambda^*)$ is a \alert{stationary point} of ${\cal
+    L}(x,y,\lambda)$.
+
+  \medskip
+
+  That just means $(x^*,y^*,\lambda^*)$ will satisfy
+  \[ \frac{\partial {\cal L}}{\partial x} = \frac{\partial {\cal L}}{\partial y} = \frac{\partial {\cal L}}{\partial \lambda} = 0. \]
+  
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{Lagrangian optmization}
+
+  OK! So if we want to find the constrained maximum of $f(x,y)$ subject
+  to $g(x,y)=0$, we just need
+  to
+  \begin{itemize}
+  \item Write the Lagrangian.
+  \item Set the derivatives of the Lagrangian to 0.
+  \item Solve the resulting system
+    of equations.
+  \item Check whether the solution is a maximum or not.
+  \end{itemize}
+
+  \medskip
+
+  A constrained minimum would be found in the same way, with a check
+  for a minimum (see next page).
+
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{Lagrangian optmization}
+
+  \begin{block}{Hessian analysis for
+      an \alert{unconstrained} optimization problem} A \alert{minimum}
+    of $f(\vec{w})$ will have a Hessian $\mat{H}_f$ with all
+    \alert{positive} eigenvalues at $\vec{w}^*$, and a \alert{maximum}
+    will have a Hessian with all \alert{negative} eigenvalues.
+  \end{block}
+    
+  \begin{block}{Hessian analysis for
+      a \alert{constrained} optimization problem}
+    For constrained optimization problems, critical points of the
+    Lagrangian are \alert{always saddle points} ($\mat{H}_{\cal L}$
+    will have a mix of negative and positive eigenvalues).
+
+    \medskip
+
+    For $m$ constraints and $n$ total variables including the Lagrange
+    multipliers, we examine the determinants of the $2m+1$th to $n$th principal minors of
+    $\mat{H}_{\cal L}$. If the critical point is a minimum, all of the minors' determinants will have a sign of $(-1)^m$. A maximum will have alternating
+    signs of the minors' determinants!
+  \end{block}
+    
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{Lagrangian optmization}
+
+  It would be worthwhile to do a simple example at this point to make
+  sure we've got it.
+
+  \medskip
+
+  Suppose we have $f(\vec{w}) = \|\vec{w}\|^2$ and $g(\vec{w}) =
+  w_1 + w_2 - 4$.
+
+  \medskip
+
+  Go ahead and draw a visualization of $f(\cdot)$ and $g(\cdot)$. You
+  should be able to determine by inspection the optimal $\vec{w}^*$
+  (a minimum).
+
+  \medskip
+
+  Then try to find $\vec{w}^*$ using the Lagrangian and verify it.
+  
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{Generalized Lagrangian optmization}
+
+  Next, we generalize the Lagrangian notion to an arbitrary parameter
+  vector and the case where we have \alert{inequality} constraints in
+  addition to the equality constraints.
+
+  \medskip
+
+  Following Ng's lecture notes, set 3, we aim to solve the
+  optimization problem
+  \[ \begin{array}{rl}
+    \min_{\vec{w}} & f(\vec{w}) \\
+    \text{s.t.}  & g_i(\vec{w}) \le 0, i \in 1..k \\
+    & h_i(\vec{w}) = 0, i \in 1..l
+    \end{array} \]
+
+  \medskip
+
+  We write the \alert{generalized Lagrangian}
+  \[ {\cal L}(\vec{w},\vec{\alpha},\vec{\beta}) =
+  f(\vec{w}) + \sum_{i=1}^k \alpha_i g_i(\vec{w}) + \sum_{i=1}^l \beta_i h_i(\vec{w}) \]
+
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{Lagrangian duality}
+
+  Turns out there are a couple ways to solve the optimization problem using
+  the generalized Lagrangian.
+
+  \medskip
+
+  First: the \alert{primal} problem:
+  \begin{eqnarray}
+    \theta_{\cal P}(\vec{w}) & = & \max_{\vec{\alpha},\vec{\beta}:\alpha_i \ge 0} {\cal L}(\vec{w},\vec{\alpha},\vec{\beta}) \nonumber\\
+    & = & \max_{\vec{\alpha},\vec{\beta}:\alpha_i \ge 0} f(\vec{w}) + \sum_{i=1}^k \alpha_i g_i(\vec{w}) + \sum_{i=1}^l \beta_i h_i(\vec{w}) \nonumber
+    \end{eqnarray}
+
+  \medskip
+
+  Convince yourself that if $\vec{w}$ violates any of our constraints,
+  then $\theta_{\cal P}(\vec{w}) = \infty$, and if $\vec{w}$ satisfies
+  all the constraints, then $\theta_{\cal P}(\vec{w}) = f(\vec{w})$.
+  
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{Lagrangian duality}
+
+  So! If you convinced yourself of the fact on the previous page, we can now
+  say that the $\vec{w}$ satisfying
+  \[ \min_{\vec{w}} \theta_{\cal P}(\vec{w}) = \min_{\vec{w}} \max_{\vec{\alpha},\vec{\beta}:\alpha_i \ge 0} {\cal L}(\vec{w},\vec{\alpha},\vec{\beta}) \]
+  solves the original optimization problem.
+
+  \medskip
+
+ We call $p^* = \min_{\vec{w}}\theta_{\cal P}(\vec{w})$ the
+ \alert{value of the primal problem}.
+
+  \medskip
+
+  It turns out the primal problem is sometimes not as easy to solve as
+  another problem, the \alert{dual} problem, that has the same solution
+  under certain conditions.
+    
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{Lagrangian duality}
+
+  So to get to a problem that might be easier to solve,
+  consider the \alert{dual} optimization problem in which we let
+  \[ \theta_{\cal D}(\vec{\alpha},\vec{\beta}) = \min_{\vec{w}}{\cal L}(\vec{w},\vec{\alpha},\vec{\beta}). \]
+
+  All we've done is swapped the order of the minimization and maximization.
+
+  \medskip
+
+  The \alert{dual optimization problem} is
+  \[ \max_{\vec{\alpha},\vec{\beta}:\alpha_i \ge 0} \theta_{\cal D}(\vec{\alpha},\vec{\beta}) = \max_{\vec{\alpha},\vec{\beta}:\alpha_i \ge 0} \min_{\vec{w}} {\cal L}(\vec{w},\vec{\alpha},\vec{\beta}). \]
+  
+  The \alert{value of the dual problem's objective} is $d^*
+  =\max_{\vec{\alpha},\vec{\beta}:\alpha_i \ge 0} \theta_{\cal
+    D}(\vec{\alpha},\vec{\beta})$
+
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{Lagrangian duality}
+
+  It is always true that
+  \[ d^* = \max_{\vec{\alpha},\vec{\beta}:\alpha_i \ge 0}\min_{\vec{w}}{\cal L}(\vec{w},\vec{\alpha},\vec{\beta}) \le
+  \min_{\vec{w}} \max_{\vec{\alpha},\vec{\beta}:\alpha_i \ge 0} {\cal
+    L}(\vec{w},\vec{\alpha},\vec{\beta}) = p^* .\]
+
+  Under certain circumstances, it will also be the case that
+  \[ d^* = p^* ,\]
+  which would mean we can solve the dual problem instead of the primal
+  problem if we so choose.
+
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{Lagrangian duality}
+
+  What are the conditions under which $p^*=d^*$? It turns out that if
+  \begin{itemize}
+  \item $f$ is convex\footnote{Loosely speaking, if we consider
+    the points $\vec{w}$ on a straight line
+    between $\vec{w}_1$ and $\vec{w}_2$, $f(\vec{w})$ is always below
+    the line.}
+  \item The $g_i$'s are convex
+  \item The $h_i$'s are affine
+  \item The $g_i$'s are strictly feasible (there is a $\vec{w}$ such that $g_i(\vec{w})<0$ for all $i$)
+  \end{itemize}
+
+  \medskip
+
+  If these conditions hold, ... (see next page)
+
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{Lagrangian duality}
+
+  If the conditions on the previous page are met,
+  there must exist $\vec{w}^*,\vec{\alpha}^*,\vec{\beta}^*$ so
+  that
+  \begin{itemize}
+  \item  $\vec{w}^*$ is the solution to the primal problem,
+  \item $\vec{\alpha}^*,\vec{\beta}^*$ are the solution to the dual problem,
+  \item $p^*=d^*={\cal L}(\vec{w}^*,\vec{\alpha}^*,\vec{\beta}^*)$, and
+  \item $\vec{w}^*,\vec{\alpha}^*,\vec{\beta}^*$ satisfy the
+    \alert{Karush-Kuhn-Tucker (KKT) conditions}\footnote{First discovered
+    by Karush in a 1939 Master's thesis, then rediscovered by Kuhn and
+    Tucker in 1951.} (next page)!
+  \end{itemize}
+
+  The KKT conditions will allow us to easily find the optimal
+  $\vec{w}^*,\vec{\alpha}^*,\vec{\beta}^*$.
+  
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{Lagrangian duality}
+
+  If the assumptions are met, then 
+  any $\vec{w}^*,\vec{\alpha}^*,\vec{\beta}^*$ satisfying the KKT
+  conditions are solutions to both the primal and dual problem. The conditions:
+  \begin{eqnarray}
+    \frac{\partial}{\partial w_i}{\cal L}(\vec{w}^*,\vec{\alpha}^*,\vec{\beta}^*) & = & 0, i \in 1..n \nonumber \\
+    \frac{\partial}{\partial \beta_i}{\cal L}(\vec{w}^*,\vec{\alpha}^*,\vec{\beta}^*) & = & 0, i \in 1..l \nonumber \\
+    \alpha_i^*g_i(\vec{w}^*) & = & 0, i \in 1..k \nonumber \\
+    g_i(\vec{w}^*) & \le & 0, i \in 1..k \nonumber \\
+    \alpha_i^* & \ge & 0, i \in 1..k \nonumber
+  \end{eqnarray}
+
+  Pay attention to the 3rd condition. This will enable us to show that
+  the SVM has only a few support vectors.
+
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{Dual optimization problem for SVMs}
+
+  OK, now we know how to write the primal and dual optimization problems
+  for SVMs.
+
+  \medskip
+
+  Previously we had
+  \[
+  \begin{array}{rl}
+    \min_{\gamma,\vec{w},b} & \frac{1}{2} \| \vec{w} \|^2 \\
+    \text{subject to} & y^{(i)}(\vec{w}^\top\vec{x}^{(i)} + b) \ge 1, i \in 1..m .
+  \end{array}
+  \]  
+  To put this into the dual Lagrangian framework, we write the constraints
+  as
+  \[ g_i(\vec{w}) = -y^{(i)}(\vec{w}^\top \vec{x}^{(i)} + b) + 1 \le 0 \]
+  i.e., one constraint for each training example.
+
+  \medskip
+
+  From the KKT conditions, we will have $\alpha_i > 0$ only for
+  training examples with functional margin exactly 1, where
+  $g_i(\vec{w}) = 0$.
+
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{Dual optimization problem for SVMs}
+
+  \myfig{2.5in}{svs}{Ng, CS229 lecture notes set 3}
+
+  \medskip
+
+  The points on the dashed lines are the ones for which $g_i(\vec{w})=0$ and
+  $\alpha_i>0$. They are called the \alert{support vectors}.
+  
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{Dual optimization problem for SVMs}
+
+  Next let's write the generalized Lagrangian for our optimization problem:
+  \[ {\cal L}(\vec{w},b,\vec{\alpha}) = \frac{1}{2}\|\vec{w}\|^2
+  - \sum_{i=1}^m \alpha_i \left[ y^{(i)}(\vec{w}^\top\vec{x}^{(i)} +b)-1\right] \]
+
+  There are only $\alpha_i$'s not $\beta_i$'s because the problem only
+  has inequality constraints, not equality constraints.
+  
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{Dual optimization problem for SVMs}
+
+  For the dual optimization problem, we first minimize ${\cal
+    L}(\vec{w},b,\vec{\alpha})$ with respect to $\vec{w}$ and $b$, for
+  \alert{fixed} $\vec{\alpha}$.
+
+  \medskip
+
+  To find the $\vec{w}$ and $b$, we take the partials and set to 0:
+  \[ \nabla_{\vec{w}}{\cal L}(\vec{w},b,\vec{\alpha}) =
+  \vec{w} - \sum_{i=1}^m\alpha_i y^{(i)}\vec{x}^{(i)} = \vec{0} \]
+  from which we can obtain
+  \[ \vec{w} = \sum_{i=1}^m \alpha_i y^{(i)} \vec{x}^{(i)} .\]
+  For $b$ we obtain the equation
+  \[ \frac{\partial}{\partial b}{\cal L}(\vec{w},b,\vec{\alpha}) =
+  \sum_{i=1}^m\alpha_i y^{(i)} = 0 \]
+  This doesn't tell us anything about $b$, note, but we'll solve that problem
+  shortly.
+
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{Dual optimization problem for SVMs}
+
+  Now that we have a definition of $\vec{w}$ (previous slide), we plug
+  into the Langrangian, obtaining
+  \[ {\cal L}(\vec{w},b,\vec{\alpha}) = \sum_{i=1}^m\alpha_i - \frac{1}{2}\sum_{i,j=1}^m y^{(i)}y^{(j)}\alpha_i\alpha_j(\vec{x}^{(i)})^\top\vec{x}^{(j)}- b\sum_{i=1}^m\alpha_i y^{(i)}. \]
+  Using the result from $\partial {\cal L}/\partial b$, we know the
+  last term is $\vec{0}$, reducing us to
+  \[ {\cal L}(\vec{w},b,\vec{\alpha}) = \sum_{i=1}^m\alpha_i - \frac{1}{2}\sum_{i,j=1}^m y^{(i)}y^{(j)}\alpha_i\alpha_j(\vec{x}^{(i)})^\top\vec{x}^{(j)}. \]
+  
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{Dual optimization problem for SVMs}
+
+  Next, for the dual optimization problem, now that we've written
+  down the equivalent of 
+  $\theta_{\cal D}(\vec{\alpha},\vec{\beta})$, our job is to now maximize
+  this expression w.r.t.\ $\vec{\alpha}$.
+ 
+  \medskip
+
+  We'll write $\theta_{\cal D}$ as $W$ for the specific case of the SVM:
+  \[ \begin{array}{rl}
+    \max_{\vec{\alpha}} & W(\vec{\alpha}) = \sum_{i=1}^m\alpha_i - \frac{1}{2}\sum_{i,j=1}^m y^{(i)}y^{(j)}\alpha_i\alpha_j\left< \vec{x}^{(i)},\vec{x}^{(j)}\right> \\
+    \text{such that} & \alpha_i \ge 0, i \in 1..m \\
+    & \sum_{i=1}^m\alpha_iy^{(i)} = 0
+  \end{array} \]
+  where $\left<\cdot,\cdot\right>$ is the inner product.
+
+  \medskip
+  
+  If the assumptions for $p^*=d^*$ hold (verify that they do), then we
+  can use the KKT conditions to solve this dual problem instead of
+  solving the primal problem.
+  
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{Dual optimization problem for SVMs}
+
+  Once we solve the dual problem for $\vec{w}$ to obtain $\vec{w}^*$,
+  we have the \alert{orientation} of our maximum margin hyperplane,
+  and all that remains is to find $b$, the bias or signed distance of
+  the hyperplane to the origin.
+
+  \medskip
+
+  \[ b^* = -\frac{\max_{i:y^{(i)}=-1}\vec{w}^{*\top}\vec{x}^{(i)} + \min_{i:y^{(i)}=1}\vec{w}^{*\top}\vec{x}^{(i)}}{2} \]
+
+  \medskip
+
+  You should be able to verify this easily.
+
+  \medskip
+
+  Note that another way to calculate $b$ (not knowing $\vec{w}$) is
+  \[ b = \frac{1}{N_{\cal S}}\sum_{i\in {\cal S}} \left(
+         y^{(i)} - \sum_{j\in {\cal S}} \alpha_j y^{(j)} \left< \vec{x}^{(i)},
+         \vec{x}^{(j)} \right> \right), \]
+  where ${\cal S}$ is the set of indexes of the support vectors $\{i \in 1..m \mid
+  \alpha_i > 0\}$ and $N_{\cal S}$ is the size of that set.
+
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{Prediction using SVM}
+
+  Once we have the optimal $\vec{w}$ and $b$, we would make the
+  \alert{prediction}
+  \[ h_{\vec{w},b}(\vec{x}) = \begin{cases} +1 & \vec{w}^\top \vec{x}+b \ge 0 \\
+    -1 & \text{otherwise} \end{cases} \]
+  However, it is important to note that
+  \begin{eqnarray}
+    \vec{w}^\top \vec{x}+b & = & \left( \sum_{i=1}^m\alpha_i y^{(i)}\vec{x}^{(i)} \right)^\top \vec{x} + b \nonumber \\
+    & = & \sum_{i=1}^m\alpha_i y^{(i)}\left< \vec{x}^{(i)}, \vec{x}\right> + b .\nonumber
+  \end{eqnarray}
+  which shows that our prediction for $\vec{x}$ is a \alert{weighted
+    summation of inner products} with the \alert{support vectors} (the
+  $\vec{x}^{(i)}$ for which $\alpha_i \ne 0$).
+  
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{Coming next}
+
+  Well, now we've understood very well the optimization problem for
+  support vector machines in the linearly separable case.
+
+  \medskip
+
+  As of yet, we haven't discussed:
+  \begin{itemize}
+  \item The case where the training data are \alert{not
+    linearly separable}.
+  \item How we can turn the linear SVM into a \alert{nonlinear} classifier.
+  \item An \alert{efficient optimization algorithm} for the $\alpha_i$'s
+  \end{itemize}
+
+  These issues are coming next!
+
+  \medskip
+
+  We'll introduce \alert{kernels} as a way to obtain nonlinear
+  transformations of the input data then perform linear classification
+  in the transformed space.
+
+  \medskip
+
+  We'll introduce \alert{regularization} to allow for non-separable
+  data and have some resilience to outliers.
+
+  \medskip
+
+  We'll look at how a new optimization algorithm, \alert{coordinate
+    ascent}, can be adapted to the case of our dual optimization
+  problem.
+
+  \medskip
+  
+  ``Raise your hand if this makes sense!''
+
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{Kernels: feature mapping}
+
+  When we learned linear regression, we found that it was a simple
+  matter to generate new features that were nonlinear transforms of
+  the original attributes.
+
+  \medskip
+
+  Let's make some terminology:
+  \begin{itemize}
+  \item Let's call the original inputs for $\vec{x}$ in the training
+    set the input \alert{attributes} for the problem.
+  \item We'll call the newly generated values the input \alert{features}.
+  \item Let $\vec{\phi}$ denote the \alert{feature mapping} that maps attributes
+    to features.
+  \end{itemize}
+
+  \medskip
+
+  Example: if we mapped an original scalar feature $x$ (such as height)
+  to $x$, $x^2$, and $x^3$ to obtain a cubic hypothesis, we would write
+  the mapping
+  \[ \vec{\phi}(x) = \begin{bmatrix} x \\ x^2 \\ x^3 \end{bmatrix} .\]
+
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{Kernels}
+
+  To allow for mapping in the SVM optimization algorithm, we simply
+  replace $\vec{x}$ with $\vec{\phi}(\vec{x})$.
+
+  \medskip
+
+  Where we have inner products $\left< \vec{x}, \vec{z} \right>$, we
+  will have instead $\left< \vec{\phi}(\vec{x}),\vec{\phi}(\vec{z})
+  \right>$
+
+  \medskip
+
+  New term: given a feature mapping $\vec{\phi}$, the corresponding
+  \alert{kernel} is
+  \[ K(\vec{x},\vec{z}) = \vec{\phi}(\vec{x})^\top\vec{\phi}(\vec{z}) .\]
+
+  \medskip
+
+  Now we can replace $\left< \vec{x}, \vec{z} \right>$ with
+  $K(\vec{x},\vec{z})$.
+
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{Kernels: prediction using kernels}
+
+  Note: thus far we haven't done much!
+
+  \medskip
+
+  We have just added a mapping function and rewritten the SVM inference
+  algorithm in terms of a kernel function.
+
+  \medskip
+
+  Instead of computing
+  \[ \sum_{i=1}^m\alpha_i y^{(i)}\left< \vec{x}^{(i)}, \vec{x}\right> + b ,\]
+  then predicting based on the sign of the result, we have rewritten the
+  computation as
+  \[ \sum_{i=1}^m\alpha_i y^{(i)} K(\vec{x}^{(i)}, \vec{x}) + b .\]
+  
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{Kernels: efficiency}
+
+  What is the benefit of rewriting our inference rule in terms of kernels?
+
+  \medskip
+
+  It turns out that sometimes computing the kernel is \alert{more
+    efficient} than transforming the input attributes into feature
+  space then computing a dot product.
+
+  \medskip
+
+  Ng's example: consider the kernel
+  \[ K(\vec{x},\vec{z}) = (\vec{x}^\top\vec{z})^2. \]
+  What $\vec{\phi}$ does this correspond to?
+
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{Kernels: efficiency}
+
+  \begin{eqnarray}
+    K(\vec{x},\vec{z}) & = & (\vec{x}^\top\vec{z})^2 \nonumber \\
+    & = & \left( \sum_{i=1}^n x_iz_i \right)
+    \left( \sum_{j=1}^n x_j z_j \right) \nonumber \\
+    & = & \sum_{i=1}^n\sum_{j=1}^n x_i x_j z_i z_j \nonumber \\
+    & = & \sum_{i,j=1}^n (x_i x_j)(z_i z_j) \nonumber
+  \end{eqnarray}
+  which you can verify corresponds to
+  $\vec{\phi}(\vec{x})^\top\vec{\phi}(\vec{z})$ with (using $n=3$ for example)
+  \[ \vec{\phi}(\vec{x}) = \begin{bmatrix} x_1x_1 & x_1x_2 & x_1x_3 & x_2x_1 & x_2x_2 & x_2x_3 & x_3x_1 & x_3x_2 & x_3x_3 \end{bmatrix}^\top .\]
+      
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{Kernels: efficiency}
+
+  In the example, computing $\vec{\phi}(\vec{x})$ takes $O(n^2)$ time,
+  but computing $K(\vec{x},\vec{z})$ takes $O(n)$ time!
+
+  \medskip
+
+  So we see that kernels can be more efficient than dot products in feature
+  space.
+
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{Kernels: interpretation}
+
+  Kernels are efficient. Good. Then how can we think about what kernel
+  to use for a particular problem?
+
+  \medskip
+
+  Consider that a dot product to a certain extent measures how similar
+  two vectors are:
+  \begin{itemize}
+  \item The dot product is 0 for orthogonal vectors
+  \item The dot product grows as we rotate the vectors toward each other.
+  \end{itemize}
+
+  \medskip
+
+  We can use this intuition to generate ideas for different kinds of kernels.
+
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{Kernels: interpretation}
+
+  For example, the most popular kernel besides the linear kernel is the
+  \alert{Gaussian kernel} or \alert{radial basis function (RBF) kernel}
+  \[ K(\vec{x},\vec{z}) = e^{-\frac{\|\vec{x}-\vec{z}\|^2}{2\sigma^2}} \]
+  which is 1 when $\vec{x}=\vec{z}$ and decreases as they move apart.
+
+  \medskip
+
+  It turns out that this choice of $K(\cdot,\cdot)$ is a valid kernel,
+  although it corresponds to a $\vec{\phi}$ transforming $\vec{x}$ into
+  \alert{an infinite dimensional feature space}!!
+  
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{Kernels: validity}
+
+  OK so we have two ways to design kernels:
+  \begin{itemize}
+  \item Come up with a $\vec{\phi}$ we think useful, and compute $K(\cdot,\cdot)$ in the feature space directly.
+    \item Come up with a $K(\cdot,\cdot)$ we think useful, verify that
+      it is a valid kernel, and just use it without ever computing
+      $\vec{\phi}(\vec{x})$ at all.
+  \end{itemize}
+
+  \medskip
+
+  So we need to know what makes a kernel valid.
+
+  \medskip
+
+  \textbf{Mercer's theorem} (roughly): $K(\cdot,\cdot)$ is a valid
+  kernel iff the \alert{kernel matrix} or \alert{Gram matrix}
+  \[ \mat{K} = \begin{bmatrix} K(\vec{x}^{(1)},\vec{x}^{(1)}) &
+    K(\vec{x}^{(1)},\vec{x}^{(2)}) & \cdots \\
+    K(\vec{x}^{(2)},\vec{x}^{(1)}) & K(\vec{x}^{(2)},\vec{x}^{(2)}) & \cdots \\
+    \vdots & \vdots & \ddots \end{bmatrix} \]
+  is symmetric positive semidefinite for any training set $(\vec{x}^{(1)},
+  \ldots,\vec{x}^{(m)})$.
+
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{Kernels: validity}
+
+  See Hastie et al., Bishop, or Ng for (a lot) more detail on valid
+  kernels, proofs of positive semidefiniteness of the kernel matrix, and
+  so on!
+
+  \medskip
+
+  If we're doing research on kernel methods, we'll need those details.
+
+  \medskip
+
+  Also, we can apply the \alert{kernel trick} to any machine learning algorithm, not just SVMs, to get a ``kernelized'' version of that algorithm.
+
+  \medskip
+
+  So, like the GLM trick, the kernel trick is a kind of generator of
+  new machine learning algorithms.
+  
+  \medskip
+
+  If we are primarily a user, however, we can just try the various kernel
+  options provided by a SVM library.
+  
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{Non-separable data}
+
+  Recall what allowed us to formulate the SVM maximum margin problem
+  as a QP problem: \alert{linear separability made the constraints satisfiable}.
+
+  \medskip
+
+  Now suppose the training data are \alert{not} linearly separable
+  and/or contain \alert{outliers}.
+
+  \medskip
+
+  We can extend our objective function introducing \alert{slack variables}:
+  \[ \begin{array}{rl}
+    \min_{\vec{\gamma},\vec{w},b,\vec{\xi},\vec{r}} & \frac{1}{2}\|\vec{w}\|^2 + C\sum_{i=1}^m \xi_i \\
+    \text{such that} & y^{(i)}(\vec{w}^\top \vec{x}^{(i)}+b) \ge 1-\xi_i, i \in 1..m \\
+    & \xi_i \ge 0, i \in 1..m
+  \end{array} \]
+
+  This is still a QP problem (now we have a linear term in the
+  objective function and a modified set of linear inequality
+  constraints).
+
+  \medskip
+
+  However, to allow the use of the kernel trick, we'll use the dual
+  Lagrangian form of the optimization again.
+  
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{Non-separable data}
+
+  Illustration of slack variables:
+
+  \medskip
+
+  \myfig{2.8in}{slack}{Bishop (2006), Figure 7.3}
+
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{Non-separable data}
+
+  The Lagrangian is
+  \[ \begin{array}{rl}
+    {\cal L}(\vec{w},b,\vec{\xi},\vec{\alpha},\vec{r}) =
+  &\frac{1}{2}\vec{w}^\top \vec{w} + C\sum_{i=1}^m\xi_i -\\
+  &\sum_{i=1}^m\alpha_i \left[ y^{(i)}(\vec{x}^{(i)\top}\vec{w}+b)-1+\xi_i\right] -
+  \sum_{i=1}^mr_i\xi_i . \end{array} \]
+
+  \medskip
+
+  Taking derivatives with respect to $\vec{w}$ and $b$, setting them
+  to 0, substituting them in, and simplifying, we can obtain the dual
+  optimization problem
+  \[ \begin{array}{rl} \max_{\vec{\alpha}} & W(\vec{\alpha}) = \sum_{i=1}^m\alpha_i
+    - \frac{1}{2}\sum_{i,j=1}^my^{(i)}y^{(j)}\alpha_i\alpha_j
+    \left< \vec{x}^{(i)},\vec{x}^{(j)}\right> \\
+    \text{such that} & 0 \le \alpha_i \le C, i \in 1..m \\
+    & \sum_{i=1}^m \alpha_i y^{(i)} = 0 .\end{array} \]
+
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{Non-separable data}
+
+  Amazingly, the $\xi_i$ and $r_i$ drop out of the optimization.
+
+  \medskip
+
+  This leaves the original objective function for the $\alpha_i$ with
+  an a new constraint that $\alpha_i \le C$.
+
+  \medskip
+
+  So if we can learn the $\alpha_i$ for the separable case, all we need
+  to do for outliers and overlapping data is put a limit on $\alpha_i$.
+
+  \medskip
+
+  Larger $C$ makes the final model less tolerant toward training
+  points crossing the decision boundary.
+
+  \medskip
+
+  Smaller $C$ will allow more training points to cross the boundary
+  in order to get a good overall fit to the data.
+  
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{Non-separable data}
+
+  The KKT dual-complementarity conditions give the following:
+  \begin{eqnarray}
+    \alpha_i = 0 & \implies & y^{(i)}(\vec{w}^\top\vec{x}^{(i)}+b) \ge 1 \nonumber \\
+    \alpha_i = C & \implies & y^{(i)}(\vec{w}^\top \vec{x}^{(i)}+b) \le 1 \nonumber \\
+    0 < \alpha_i < C & \implies & y^{(i)}(\vec{w}^\top \vec{x}^{(i)}+b) = 1 \nonumber
+  \end{eqnarray}
+
+  So the initial assumption of linearly separable data turns out not to be a big deal!
+
+  \medskip
+
+  One thing to note, however: the parameter $C$ is a \alert{free
+    parameter} or \alert{hyperparameter} that must be set to some
+  reasonable value, usually through a cross validation experiment
+  (more on this later).
+
+  \medskip
+
+  So now all we need is an efficient algorithm to solve the dual
+  optimization problem.
+  
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{Optimizing the dual}
+
+  We begin with the \alert{coordinate ascent} algorithm.
+
+  \medskip
+
+  Suppose the goal is to solve the (unconstrained for now) optimization
+  problem
+  \[ \max_{\vec{\alpha}} W(\alpha_1,\alpha_2,\ldots,\alpha_m) .\]
+  Rather than gradient ascent or Newton's method, we might now try
+  to optimize the parameters one by one:
+
+  \begin{tabbing}
+    xxx \= xxx \= \kill
+    While not converged do \\
+    \> for $i = 1, \ldots, m$ do \\
+    \> \> $\alpha_i \leftarrow \argmax_{\hat{\alpha}_i} W(\alpha_1,
+    \ldots,\alpha_{i-1},\hat{\alpha}_i,\alpha_{i+1},\ldots,\alpha_m)$
+  \end{tabbing}
+
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{Optimizing the dual}
+
+  Visualization of coordinate ascent:
+  \myfig{3in}{ng-coord-ascent}{Ng, CS 229 lecture notes, set 3}
+  
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{Optimizing the dual}
+
+  To adapt coordinate ascent to the SVM dual optimization problem,
+  consider that we have a set of $\alpha_i$'s that statisfy the constraints.
+
+  \medskip
+
+  Can we hold $\alpha_2,\ldots$ fixed while optimizing with respect to
+  $\alpha_1$?
+
+  \medskip
+
+  No, because the constraint $\sum_{i=1}\alpha_iy^{(i)} = 0$ means that if we
+  increase (decrease) an $\alpha_i$ with $y^{(i)}=-1$ we have to make a
+  correspnding decrease (increase) in an $\alpha_i$ with $y^{(i)}=-1$
+  or a corresponding increase (decrease) in an $\alpha_i$ with $y^{(i)}=+1$.
+  
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{Optimizing the dual}
+
+  The SMO algorithm by John Platt (1998) therefore updates \alert{pairs}
+  of $\alpha_i$'s at a time:
+
+  \begin{tabbing}
+    xxx \= xxx \= xxx \kill
+    While not converged \\
+    \> Select a pair $(\alpha_i,\alpha_j)$ \\
+    \> Optimize $W(\vec{\alpha})$ with respect to $\alpha_i$ and $\alpha_j$.
+  \end{tabbing}
+
+  \medskip
+
+  The convergence criterion is whether the KKT conditions are
+  satisfied within some tolerance.
+  
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{Optimizing the dual}
+
+  Suppose we've selected $\alpha_1$ and $\alpha_2$ as the parameters
+  to optimize on one iteration.
+
+  \medskip
+
+  Clearly, due to the constraint that $\sum_i \alpha_iy^{(i)} = 0$, we can
+  write
+  \[ \alpha_1 y^{(1)} + \alpha_2 y^{(2)} = - \sum_{i=3}^m \alpha_i y^{(i)}, \]
+  or, equivalently for some constant $\zeta$:
+  \[ \alpha_1 y^{(1)} + \alpha_2 y^{(2)} = \zeta. \]
+  
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{Optimizing the dual}
+
+  The $\alpha_i$'s are already constrained to lie within $0 \le \alpha_i \le C$.
+
+  \medskip
+
+  Imagine this constraint as a square. The new constraint means $\alpha_1$ and
+  $\alpha_2$ must lie on a line:
+
+  \medskip
+
+  \myfig{2.5in}{ng-smo-constraints}{Ng, CS 229 lecture notes set 3}
+  
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{Optimizing the dual}
+
+  We can now rewrie $\alpha_1$ in terms of $\alpha_2$:
+  \[ \alpha_1 = (\zeta-\alpha_2y^{(2)})y^{(1)}. \]
+  Substituting this into our objective function, and keeping
+  $\alpha_3,...\alpha_m$ fixed, we obtain a quadratic function in
+  $\alpha_2$ that can be solved by setting the partial derivative to
+  0.
+
+  \medskip
+
+  To ensure that the new $\alpha_2$ satisfies the box constraint, we
+  just ``clip'' it so that it and $\alpha_1$ will lie in the range $0
+  \le \alpha_2 \le C$.
+
+  \medskip
+
+  You now know enough to read the SMO paper by John Platt for more detail
+  and a nice pseudocode description of the full algorithm.
+  
+\end{frame}
+
+
+\begin{frame}{Support vector machines}{Production implementations}
+
+  LIBSVM is probably the best open-source implementation of SVM
+  model training and prediction:
+  \begin{itemize}
+  \item It implements an algorithm similar to SMO.
+  \item It has wrappers for every major programming language and a
+    command-line interface on Linux (\texttt{apt-get install
+      libsvm-tools}).
+  \item It is included in scikit-py and OpenCV.
+  \item \url{https://www.csie.ntu.edu.tw/~cjlin/libsvm/}
+  \end{itemize}
+
+  \medskip
+  
+  Another popular open source library is SVM$^{light}$ from Cornell.
+  \begin{itemize}
+    \item \url{https://www.cs.cornell.edu/people/tj/svm_light/}
+  \end{itemize}
+
+  \medskip
+
+  \alert{Hyperparameter selection} ($C$, other parameters depending on
+  the kernel) is extremely important with SVMs!  See LIBSVM's
+  \texttt{easy.py} script to automate the process.
+
+\end{frame}
+
+\def\show{0}
+\ifnum\show=1
+\fi
+
+\end{document}
+
