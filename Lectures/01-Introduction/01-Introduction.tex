@@ -1,0 +1,202 @@
+\documentclass{beamer}
+
+\mode<presentation>
+{
+  \setbeamertemplate{background canvas}[square]
+  \pgfdeclareimage[width=6em,interpolate=true]{dsailogo}{../dsai-logo}
+  \pgfdeclareimage[width=6em,interpolate=true]{erasmuslogo}{../erasmus-logo}
+  \titlegraphic{\pgfuseimage{dsailogo} \hspace{0.2in} \pgfuseimage{erasmuslogo}}
+  %\usetheme{default}
+  \usetheme{Madrid}
+  \usecolortheme{rose}
+  \usefonttheme[onlysmall]{structurebold}
+}
+
+\usepackage{pgf,pgfarrows,pgfnodes,pgfautomata,pgfheaps,pgfshade}
+\usepackage{amsmath,amssymb}
+\usepackage{graphics}
+\usepackage{ragged2e}
+\usepackage{array}
+\usepackage[latin1]{inputenc}
+\usepackage{colortbl}
+\usepackage[absolute,overlay]{textpos}
+\setlength{\TPHorizModule}{30mm}
+\setlength{\TPVertModule}{\TPHorizModule}
+\textblockorigin{10mm}{10mm}
+\usepackage[english]{babel}
+\usepackage{listings}
+\setbeamercovered{dynamic}
+
+\AtBeginSection[]{
+  \begin{frame}<beamer>
+  \frametitle{Outline}
+  \tableofcontents[currentsection]
+  \end{frame}
+}
+
+\title[Machine Learning]{Machine Learning\\Introduction}
+\author{dsai.asia}
+\institute[]{Asian Data Science and Artificial Intelligence Master's Program}
+\date{}
+
+% My math definitions
+
+\renewcommand{\vec}[1]{\boldsymbol{#1}}
+\newcommand{\mat}[1]{\mathtt{#1}}
+\newcommand{\ten}[1]{\mathcal{#1}}
+\newcommand{\crossmat}[1]{\begin{bmatrix} #1 \end{bmatrix}_{\times}}
+\renewcommand{\null}[1]{{\cal N}(#1)}
+\newcommand{\class}[1]{{\cal C}_{#1}}
+\def\Rset{\mathbb{R}}
+\def\Pset{\mathbb{P}}
+\DeclareMathOperator*{\argmax}{argmax}
+\DeclareMathOperator*{\argmin}{argmin}
+\DeclareMathOperator*{\sign}{sign}
+\DeclareMathOperator*{\cov}{Cov}
+\def\norm{\mbox{$\cal{N}$}}
+
+\newcommand{\stereotype}[1]{\guillemotleft{{#1}}\guillemotright}
+
+\newcommand{\myfig}[3]{\centerline{\includegraphics[width={#1}]{{#2}}}
+    \centerline{\scriptsize #3}}
+
+\begin{document}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%             CONTENTS START HERE
+
+%\setbeamertemplate{navigation symbols}{}
+
+\frame{\titlepage}
+
+%--------------------------------------------------------------------
+%\part<presentation>{Part name}
+%
+%\frame{\partpage}
+
+\begin{frame}
+\frametitle{Readings}
+
+Readings for these lecture notes:
+\begin{itemize}
+\item[-] Bishop, C. (2006), \textit{Pattern Recognition and Machine Learning},
+  Springer, Chapters 3, 4, 6, 7.
+\item[-] Hastie, T., Tibshirani, R., and Friedman, J. (2016),
+  \textit{Elements of Statistical Learning: Data Mining, Inference, and
+    Prediction}, Springer, Chapters 2, 3, 4, 12.
+\item[-] Ng, A. (2017), \textit{Supervised Learning}, Lecture note set
+  1 for CS229, Stanford University.
+\item[-] Ng, A. (2017), \textit{Generative Learning Algorithms},
+  Lecture note set 2 for CS229, Stanford University.
+\item[-] Ng, A. (2017), \textit{Support Vector Machines},
+  Lecture note set 3 for CS229, Stanford University.
+\end{itemize}
+
+These notes contain material $\copyright$ Bishop (2006), Hastie et
+al.\ (2016), and Ng (2017).
+
+\end{frame}
+
+%======================================================================
+\section{Introduction}
+%======================================================================
+
+\begin{frame}{Introduction}{What is machine learning?}
+
+  Machine learning is now near the top of the list of skills
+  U.S.\ companies want to see in the people they hire.
+
+  \medskip
+  
+  What's all the fuss, and what is machine learning?
+
+  \medskip
+  
+  Many tasks we want computers to do are difficult to program
+  directly.
+
+  \medskip
+  
+  Examples: image recognition, speech recognition, controlling a
+  self-driving car.
+
+  \medskip
+
+  \begin{block}{Machine learning}
+  A set of tools that let us specify the computer's
+  behavior by giving examples of \alert{how} it should respond in
+  given situations, \alert{without specifying the computation
+    necessary} to formulate that response.
+  \end{block}
+
+  \medskip
+  
+  We tell the computer \alert{what} it should decide to do in a
+  situation but not \alert{how} to make the decision.
+
+\end{frame}
+
+
+\begin{frame}{Introduction}{What's a model?}
+
+  Essential idea: we want to create a \alert{model} from data that can
+  later be \alert{queried} when new situations arise.
+
+  \medskip
+
+  \begin{block}{Model}
+
+    A (mathematical) function whose input is a \alert{description of
+      the current situation} and whose output is a \alert{decision,
+      recommendation, or action}.
+
+  \end{block}
+
+\end{frame}
+
+
+\begin{frame}{Introduction}{Examples of ML in real life}
+  
+  We are using machine learning every time we
+  \begin{itemize}
+  \item Use a credit card
+  \item Get a recommendation from Netflix or Amazon
+  \item Ask Google for directions by voice
+  \item Take a ride in our Tesla!
+  \end{itemize}
+
+  \medskip
+  
+  Let's brainstorm about things closer to home that might be using
+  machine learning already or might benefit from it in the near
+  future.
+
+\end{frame}
+
+
+\begin{frame}{Introduction}{The four problems for machine learning}
+
+  Machine learning comprises perhaps four basic problems:
+  \begin{itemize}
+  \item \alert{Classification}: place instances into one or more of a
+    set of given discrete \alert{categories}.
+  \item \alert{Regression}: estimate a function from sample
+    inputs/outputs that can later be used for \alert{interpolation} or
+    \alert{extrapolation}.
+  \item \alert{Density estimation}: estimate a probability density
+    function from a sample from the distribution that can later be used,
+    e.g., for \alert{anomaly detection}.
+  \item \alert{Reinforcement}: derive a \alert{policy} that enables an
+    agent to behave optimally in an uncertain environment using
+    \alert{feedback} on the goodness of the outcome over time.
+  \end{itemize}
+
+  \medskip
+
+  Let's think about the input and output of the model in each of these
+  cases.
+  
+\end{frame}
+
+\end{document}
+
