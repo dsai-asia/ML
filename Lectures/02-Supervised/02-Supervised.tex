@@ -98,108 +98,6 @@ al.\ (2016), and Ng (2017).
 \end{frame}
 
 %======================================================================
-\section{Introduction}
-%======================================================================
-
-\begin{frame}{Introduction}{What is machine learning?}
-
-  Machine learning is now near the top of the list of skills
-  U.S.\ companies want to see in the people they hire.
-
-  \medskip
-  
-  What's all the fuss, and what is machine learning?
-
-  \medskip
-  
-  Many tasks we want computers to do are difficult to program
-  directly.
-
-  \medskip
-  
-  Examples: image recognition, speech recognition, controlling a
-  self-driving car.
-
-  \medskip
-
-  \begin{block}{Machine learning}
-  A set of tools that let us specify the computer's
-  behavior by giving examples of \alert{how} it should respond in
-  given situations, \alert{without specifying the computation
-    necessary} to formulate that response.
-  \end{block}
-
-  \medskip
-  
-  We tell the computer \alert{what} it should decide to do in a
-  situation but not \alert{how} to make the decision.
-
-\end{frame}
-
-
-\begin{frame}{Introduction}{What's a model?}
-
-  Essential idea: we want to create a \alert{model} from data that can
-  later be \alert{queried} when new situations arise.
-
-  \medskip
-
-  \begin{block}{Model}
-
-    A (mathematical) function whose input is a \alert{description of
-      the current situation} and whose output is a \alert{decision,
-      recommendation, or action}.
-
-  \end{block}
-
-\end{frame}
-
-
-\begin{frame}{Introduction}{Examples of ML in real life}
-  
-  We are using machine learning every time we
-  \begin{itemize}
-  \item Use a credit card
-  \item Get a recommendation from Netflix or Amazon
-  \item Ask Google for directions by voice
-  \item Take a ride in our Tesla!
-  \end{itemize}
-
-  \medskip
-  
-  Let's brainstorm about things closer to home that might be using
-  machine learning already or might benefit from it in the near
-  future.
-
-\end{frame}
-
-
-\begin{frame}{Introduction}{The four problems for machine learning}
-
-  Machine learning comprises perhaps four basic problems:
-  \begin{itemize}
-  \item \alert{Classification}: place instances into one or more of a
-    set of given discrete \alert{categories}.
-  \item \alert{Regression}: estimate a function from sample
-    inputs/outputs that can later be used for \alert{interpolation} or
-    \alert{extrapolation}.
-  \item \alert{Density estimation}: estimate a probability density
-    function from a sample from the distribution that can later be used,
-    e.g., for \alert{anomaly detection}.
-  \item \alert{Reinforcement}: derive a \alert{policy} that enables an
-    agent to behave optimally in an uncertain environment using
-    \alert{feedback} on the goodness of the outcome over time.
-  \end{itemize}
-
-  \medskip
-
-  Let's think about the input and output of the model in each of these
-  cases.
-  
-\end{frame}
-
-
-%======================================================================
 \section{Linear regression}
 %======================================================================
 
@@ -626,26 +524,8 @@ al.\ (2016), and Ng (2017).
 
 \begin{frame}{Linear regression}{First Python tutorial}
 
-  Now that we understand the math, let's see what Python can do for us.
-
-  \medskip
-
-  Install Python, numpy, and scikit-learn.
-
-  \medskip
-
-  Try the tutorial script from the class Website. First we'll try to
-  find optimal parameters ourselves using the normal equations, then
-  we'll use the linear regression solver in scikit-learn.
-
-  \medskip
-
-  OK! You have begun your ML Jedi training!
-
-  \medskip
-
-  Now you're ready for HW1, comparing the analytical solution with the
-  use of batch and stochastic gradient descent for linear regression.
+  In Lab 01, you'll see how we can translate the mathematics
+  presented here into working Python code.
 
 \end{frame}
 
