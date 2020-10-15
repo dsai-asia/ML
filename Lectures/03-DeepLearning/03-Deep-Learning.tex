@@ -376,7 +376,7 @@ al.\ (2016), Goodfellow et al.\ (2016), and Ng (2017).
   $$\begin{matrix}
     z_1^{[1]} = \mat{W}_1^{[1]\top}\vec{x} + b_1^{[1]} & \text{and} & a_1^{[1]} = g(z_1^{[1]}) & \hfill \\
     \vdots & \vdots & \vdots & \hfill \\
-    z_4^{[1]} = \mat{W}_1^{[1]\top}\vec{x} + b_1^{[1]} & \text{and} & a_1^{[1]} = g(z_1^{[1]}) & \hfill
+    z_4^{[1]} = \mat{W}_4^{[1]\top}\vec{x} + b_4^{[1]} & \text{and} & a_4^{[1]} = g(z_4^{[1]}) & \hfill
   \end{matrix}$$
 
   Depending on the ``deepness'' of our model, for a single input, we
@@ -482,7 +482,7 @@ a = g(z)
   inside a loop for every training example $i$ would be slower than the
   vectorized operation
   \[ \vec{z}^{[1]} = \mat{W}^{[1]\top} \mat{X}^\top + \vec{b}^{[1]}. \]
-  Note that although the dimensions of
+  Note: despite different dimensions of
   $\mat{W}^{[1]\top} \mat{X}^\top$ and $\vec{b}^{[1]}$,
   some languages like Python allow \alert{broadcasting} of the addition
   operation horizontally:
@@ -585,8 +585,8 @@ matrix([[3, 4, 5],
   e.g., \[ w^{[i]}_{jk} \sim {\cal N}(0,0.1). \]
 
   A better method in practice is called Xavier/He initialization:
-  \[ w^{[i]}_{jk} \sim {\cal N}\left(0,\sqrt{\frac{2}{n^{[l]}+n^{[l-1]}}} \right), \]
-  where $n^{[l]}$ is the number of units in layer $l$. This encourages
+  \[ w^{[i]}_{jk} \sim {\cal N}\left(0,\sqrt{\frac{2}{n^{[i]}+n^{[i-1]}}} \right), \]
+  where $n^{[i]}$ is the number of units in layer $i$. This encourages
   the variance of the outputs of a layer to be similar to the variance
   of the inputs.
   
