@@ -910,6 +910,25 @@ matrix([[3, 4, 5],
     
 \end{frame}
 
+
+\begin{frame}{Backpropagation}{Adam optimization}
+
+  For a more sophisticated version of momentum that is adaptive,
+  take a look at the famous ICLR 2015 paper on \alert{Adam}:
+  
+  \medskip
+
+  Kingma, D.P.\ and Ba, J.L.\ (2015), Adam: A Method for
+  Stochastic Optimization. In \textit{International Conference on Learning
+    Representations}.
+
+  \medskip
+
+  Adam usually outperforms other optimization methods such as SGD with
+  momentum or RMSProp when applied to large NN models.
+
+\end{frame}
+
 %======================================================================
 \section{Avoiding overfitting}
 %======================================================================
@@ -1072,14 +1091,14 @@ matrix([[3, 4, 5],
       LeCun and colleagues (LeNet 5, 1998).
     \item Won the ImageNet Large Scale Visual Recognition Challenge in 2012 and
       every ImageNet competition since then.
-    \item Jump started the current round of hype in machine learning and AI!
+    \item Jump started the recent round of hype in machine learning and AI!
     \end{itemize}
 
     \medskip
 
     \column{2.5in}
     
-    \myfig{2.5in}{gartner-2017}{Gartner hype cycle (2017)}
+    \myfig{2.5in}{gartner-2020}{Gartner hype cycle (2020)}
 
   \end{columns}
   
@@ -1650,7 +1669,7 @@ matrix([[3, 4, 5],
 
   \medskip
 
-  As we are talking about training error, the degredation is
+  As we are talking about training error, the degradation is
   \alert{not overfitting} --- it is a purely due to the vanishing
   integrity of the training signal as the network gets deeper.
 
@@ -1814,9 +1833,9 @@ and the log likelihood is
   \item Learn one or more frameworks such as Caffe, Tensorflow,
     Darknet, or Torch.
   \item A nice resource: \url{https://adeshpande3.github.io/The-9-Deep-Learning-Papers-You-Need-To-Know-About.html}
-  \item Take Matt's Applied Machine Vision course in Intersem.
-  \item We are considering starting a new course on deep
-    learning... would you be interested?
+  \item Take the DS\&AI Computer Vision course.
+  \item Take the DS\&AI Recent Trends in Machine Learning (Deep
+    Learning) course.
   \end{itemize}
 
 \end{frame}
