@@ -1108,6 +1108,786 @@ matrix([[3, 4, 5],
 \section{CNNs for image classification}
 %--------------------------------------------------------------------
 
+\begin{frame}{CNNs for image classification}
+
+Convolutional neural networks (CNNs) are suited for a variety of tasks
+that involve forming a \alert{big picture} view of data through
+\alert{hierarchical synthesis of local spatial and/or temporal
+  relationships}.
+
+\medskip
+
+The most obvious type of data we need to do this with is
+\alert{images}.  In computer vision, the three primary tasks are
+\begin{itemize}
+\item Image classification
+\item Object detection
+\item Image segmentation
+\item Object tracking
+\end{itemize}
+These problems vexed computer vision researchers for decades, but due
+to recent deep learning methods we may consider the first two problems
+\alert{solved}!
+
+\end{frame}
+
+
+\begin{frame}
+  \frametitle{CNNs for image classification}
+  \framesubtitle{Supervised learning problems in computer vision}
+
+  Among these four applications, those involving supervised machine
+  learning are \alert{classification}, \alert{detection}, and
+  \alert{segmentation}.
+
+  \medskip
+
+  \alert{Detection is really just classification}:
+  \begin{itemize}
+  \item We may classify each subwindow of an image sequentially using
+    a sweep window.
+  \item We may look for ``interesting'' locations first using some
+    kind of interest operator.
+  \item Or, we may classify all possible locations in parallel.
+  \end{itemize}
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Supervised learning problems
+  in computer vision}
+
+  Similarly, \alert{segmentation is just classification}:
+  \begin{itemize}
+  \item We may classify each \alert{pixel} as a member of the same
+    segment as its neighbors or a different segment.
+  \item In \alert{semantic segmentation}, we attach a specific
+    \alert{category label} to each pixel of the image.
+  \end{itemize}
+  
+  \medskip
+
+  The key in all of these cases is to be able to classify an image or
+  a patch of an image or a pixel of an image.
+
+  \medskip
+
+  We'll thus first look at the state of the art in image classification
+  then see how detection and segmentation can be done.
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Continuous convolution}
+
+  \alert{Convolutional neural networks} (CNNs) are good for data with
+  a known grid-like topology:
+\begin{itemize}
+\item Time series form 1-D grids.
+\item Images form 2-D grids.
+\end{itemize}
+
+Mathematically: convolution is an operation on \alert{two functions}
+with a \alert{real-valued} (possibly vector-valued) argument.
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Continuous convolution}
+
+\begin{block}{Continuous convolution for smoothing (Goodfellow et al., 2016)}
+We might use convolution for smoothing a 1-D function such as
+continuous noisy measurements $x(t)$ of the linear position of a
+spaceship:
+
+$$ s(t) = \int x(a) w(t-a) da $$
+
+$$ s(t) = (x * w)(t) $$
+
+\end{block}
+
+$w(\cdot)$ in the smoothing example:
+\begin{itemize}
+  \item Should be a
+\alert{probability density function} to make it a \alert{weighted average}.
+\item Should be \alert{0} for negative arguments (the future)
+\end{itemize}
+
+\medskip
+
+There are many other applications of continuous convolution.
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Discrete convolution}
+
+  Now we move to \alert{discrete} convolution.
+
+  $x(t)$ is assumed to be a discrete sample from some underlying
+  continuous function taken at regular spatial or temporal intervals.
+
+  \medskip
+  
+  We'll call $x(t)$ the \alert{input} and $w(t)$ the \alert{kernel}.
+
+  \medskip
+
+  The output is usually called a \alert{feature map}.
+
+  \medskip
+  
+  The continuous integral becomes a \alert{discrete sum}:
+
+  $$ s(t) = (x * w)(t) = \sum_{a = -\infty}^{\infty} x(a) w(t-a) $$
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Multidimensional convolutions}
+
+In a ML application, the input is an arbitrary \alert{multidimensional
+  array of data} and the kernel is a \alert{multidimensional array of
+  parameters} adapted by the learning algorithm.
+
+\medskip
+
+Multidimensional arrays are called \alert{tensors}.
+
+\medskip
+
+The theoretically infinite functions are assumed 0 everywhere but in
+the finite set of points we have stored.
+
+\medskip
+
+Example: a two-dimensional image $I(\cdot,\cdot)$ would best be processed by a
+two-dimensional kernel $K(\cdot,\cdot)$:
+
+$$ S(i,j) = (I * K)(i, j) = \sum_m \sum_n I(m,n)K(i-m,j-n). $$
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Multidimensional convolutions}
+
+Convolution is \alert{commutative}, so we can equivalently write
+
+$$ S(i,j) = (I * K)(i,j) = (K * I)(i,j) =
+\sum_m \sum_n I(i-m,j-n)K(m,n).$$
+
+This version is easier to implement, as the loop is over the smaller
+number of non-zero values in $K(\cdot,\cdot)$.
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Cross-correlation vs.\ convolution}
+
+Note that in both $I * K$ and $K * I$, as the index into the
+input \alert{increases}, the input into the kernel \alert{decreases},
+and vice versa.
+
+\medskip
+
+We have \alert{flipped} the kernel.
+
+\medskip
+
+Flipping the kernel is necessary mathematically for commutativity, but
+is not necessary for the actual information processing. Therefore, we
+may use \alert{cross-correlation}
+
+$$S(i,j) = (K \star I)(i,j) = \sum_m \sum_n I(i+m,j+n)K(m,n),$$
+
+in which we don't flip the kernel. You will often see cross-correlation
+called convolution in machine learning libraries.
+
+\medskip
+
+In this class, when we say ``convolution'' we will normally mean cross
+correlation!
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Example}
+
+  2D convolution operations give us the linear response of a 2D filter
+  applied to the pixels in a local region of an image.
+
+  \medskip
+
+  See any of many examples on YouTube, such as
+  \url{https://www.youtube.com/watch?v=_iZ3Q7VXiGI} !
+
+  \medskip
+
+  The simplest example is edge detection using, for example, Sobel
+  filters:
+
+  $$\begin{bmatrix} 1 & 0 & -1 \\ 2 & 0 & -2 \\ 1 & 0 & -1 \end{bmatrix}
+  \;\;\;\;\;
+  \begin{bmatrix} 1 & 2 & 1 \\ 0 & 0 & 0 \\ -1 & -2 & -1 \end{bmatrix}$$
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Hierarchical feature maps}
+
+  A convolution may apply to the \alert{input} or \alert{a feature map
+    from a previous layer}.
+
+  \medskip
+
+  Typically, convolutions apply to all of the feature maps in the
+  previous layer: this is called \alert{convolution over volume}.
+  \begin{itemize}
+  \item For the input: three maps (R, G, and B) or one map (grayscale).
+  \item For an inner layer: the number of kernels. This would be,
+    e.g., 96 for AlexNet's second convolutional layer, except that
+    AlexNet splits into two separate hierarchies so it is 48 for each
+    stream.
+  \end{itemize}
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Valid region of the convolution}
+
+Example below. Note that we only use the \alert{valid} parts of the
+convolution where the kernel fully overlaps the valid part of the
+input.
+
+\myfig{2.2in}{goodfellow-fig9-1}{Goodfellow et al. (2016), Figure 9.1}
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Important ideas behind CNNs}
+
+There are three main important ideas behind the success of
+convolutional neural networks:
+\begin{itemize}
+\item Sparse interactions
+\item Parameter sharing
+\item Equivariant representations
+\end{itemize}
+
+(Aside: a benefit of convolutions is that they can be applied to an
+input of variable size.)
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Sparse interactions}
+
+  \alert{Sparse interactions}:
+  \begin{itemize}
+    \item A fully connected layer has \alert{dense}
+interactions (every unit interacts with every unit in the previous
+layer)
+\item A convolutional layer has \alert{sparse} interactions (each
+unit in the output feature map interacts only with a few elements of
+the input, via the small kernel.
+  \end{itemize}
+
+  \medskip
+  
+  Fewer parameters means \alert{lower memory requirements} and
+  \alert{higher statistical efficiency}.
+
+  \medskip
+  
+  The specific organization of a convolution also means it can be
+  implemented efficiently.
+
+  \medskip
+
+  Dense connections from $m$ inputs to $n$ outputs requires $O(mn)$
+  time.  With a kernel of size $k$, we only need $O(kn)$ time.
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Sparse interactions}
+
+Sparse interaction example. Unit $x_3$ only affects units
+$s_2$, $s_3$, and $s_4$ in the output feature map.
+Compare to dense interaction below.
+
+\myfig{2in}{goodfellow-fig9-2}{Goodfellow et al. (2016), Figure 9.2}
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Sparse interactions}
+
+Looking from above,
+unit $s_3$ in the output feature map
+has a \alert{receptive field} including $x_2$, $x_3$, and $x_4$.
+
+\myfig{2in}{goodfellow-fig9-3}{Goodfellow et al. (2016), Figure 9.3}
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Sparse interactions}
+
+
+When convolutional layers are formed into hierarchies, a unit in a
+deep layer ($g_3$) can be \alert{indirectly connected} to all or most
+of the input.
+
+\medskip
+
+\myfig{2.5in}{goodfellow-fig9-4}{Goodfellow et al. (2016), Figure 9.4}
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Parameter sharing}
+
+  \alert{Parameter sharing}:
+  \begin{itemize}
+    \item Sharing means using the same parameter for more than one interaction
+      in a model.
+    \item Shared parameters are also often called \alert{tied weights}.
+      \item In a convolution, each weight in the kernel
+        is \alert{reused} at every position in the input.
+  \end{itemize}
+
+  Parameter sharing \alert{increases statistical efficiency}.
+  
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Parameter sharing}
+
+With parameter sharing (top), one parameter is used many times.
+Without parameter sharing, one parameter is used only once.
+\myfig{3in}{goodfellow-fig9-5}{Goodfellow et al. (2016), Figure 9.5}
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Parameter sharing}
+
+The representational power of convolution with shared parameters is
+clear with the following example of vertical edge detection using a
+2-element kernel (-1,1):
+
+\myfig{3in}{goodfellow-fig9-6}{Goodfellow et al. (2016), Figure 9.6}
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Equivariance}
+
+  \alert{Equivariance}:
+  \begin{itemize}
+  \item A function $f(x)$ is \alert{equivariant} to function $g$ if $f(g(x)) =
+    g(f(x))$.
+  \item Convolution is equivariant to \alert{translation}.
+  \item If $f$ is a convolution operation and $g$ is a translation
+    operation, we can see that the convolution of a translated version
+    of input $x$ is the same as the translation of the convolution of
+    $f$ and the input $x$.
+  \end{itemize}
+
+  \medskip
+  
+  How is equivariance useful?
+
+  \medskip
+
+  For time series: we get the same response to the same event,
+  \alert{regardless of when} the event occurs.
+
+  \medskip
+  
+  For images: we get the same response to a local pattern,
+  \alert{regardless of where} in the image it occurs.
+
+  \medskip
+  
+  Note that convolution is NOT equivariant to scale, rotation, etc.
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Activation / rectification}
+
+  One of the insights of the CNN is to perform convolutions
+  \alert{hierarchically}.
+
+  \medskip
+
+  However, a hierarchy of purely \alert{linear} transformations would
+  ultimately be equivalent to a single linear transformation, which would
+  not give powerful pattern matching capabilities.
+  
+  \medskip
+  
+  Generally, then, the result of one convolution in the hierarchy
+  should be transformed by a nonlinearity.
+
+  \medskip
+
+  ReLU is the most popular
+  nonlinear activation function.
+
+  \medskip
+
+  Hyperbolic tangent and the logistic sigmoid are also possible but
+  lead to slower learning, according to Krizhevsky et al.\ (AlexNet).
+
+  \medskip
+  
+  The resulting feature map may possibly be downscaled by a
+  \alert{pooling} operation before it is convolved with higher-level
+  filters.
+  
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Pooling}
+
+The structure of a CNN usually contains several ``macro'' layers
+consisting of a convolution, a nonlinearity especially ReLU, then
+pooling. Sometimes a ``layer'' means all three operations, and sometimes
+each operation is treated separately.
+
+\myfig{2in}{goodfellow-fig9-7}{Goodfellow et al. (2016), Figure 9.7}
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Pooling}
+
+Pooling makes the output feature map approximately \alert{invariant}
+to small translations of the input.
+
+\myfig{2in}{goodfellow-fig9-8}{Goodfellow et al. (2016), Figure 9.8}
+
+This is good when we want to know \alert{whether} a feature is in the
+input, without knowing precisely \alert{where} it is.
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Pooling}
+
+Pooling \alert{over features} enables invariance to more complex
+transformations of the input, such as rotation:
+\myfig{3in}{goodfellow-fig9-9}{Goodfellow et al. (2016), Figure 9.9}
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Pooling}
+
+Usually, pooling is combined with downsampling, which reduces the
+computational and statistical burden on the next layer.
+
+\medskip
+
+\myfig{3in}{goodfellow-fig9-10}{Goodfellow et al. (2016), Figure 9.10}
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Putting it together}
+
+  \begin{columns}
+
+    \column{2in}
+
+    Some sample CNN architectures, as examples.  Note that practical
+networks are deeper, more variable, and have branches.
+
+\medskip
+
+Generally, the kinds of processing we want to do on spatial and temporal
+data fit the convolve + pool processing approach, but it may not always
+be so. Convolution and pooling may cause \alert{underfitting}.
+
+\column{2.5in}
+
+\myfig{2in}{goodfellow-fig9-11}{Goodfellow et al. (2016), Figure 9.11}
+
+  \end{columns}
+  
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Refinements: tensors}
+
+In general, the input, kernel, and output are all tensors of arbitrary
+number of dimensions.
+
+\medskip
+
+Images: 2D data with 3 channels (red, green, blue), which may be combined
+into mini-batches, giving a 4D tensor as the input.
+
+\medskip
+
+The kernel applied to these data might be a 4D tensor $\mat{K}_{i,j,k,l}$ giving
+strength of connection between input channel $i$, output channel $j$, and
+offset $(k,l)$ between the output and input unit.  Note that every feature
+map $j$ connects with \alert{every} channel $i$ in the input.
+
+\medskip
+
+The output would then be a 3D tensor $\mat{Z}_{i,j,k}$, where $i$ represents
+the output channel or feature map and $(j,k)$ indicates the spatial location.
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Refinements: downsampling via stride}
+
+We may also \alert{downsample} during the convolution operation, using
+a stride not equal to 1. Example stride of 2:
+
+\myfig{2in}{goodfellow-fig9-12}{Goodfellow et al. (2016), Figure 9.12}
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Stride}
+
+  Stride is important:
+  \begin{itemize}
+  \item Typically, the convolution operation is applied at every pixel
+    of the input (stride $=$ 1).
+  \item When spatial resolution is less important or neighboring
+    receptive fields overlap significantly, we may skip some pixels of
+    the input (stride $>$ 1).
+  \item Most architectures use a stride of 1 for 3$\times$3
+    convolutions and a stride of 1--3 for 5$\times$5 convolution.
+  \item The trend: smaller kernels and more layers $\rightarrow$ small
+    strides (11$\times$11 convolutions as in AlexNet are not often
+    seen).
+  \end{itemize}
+    
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Refinements: padding}
+
+  \begin{columns}
+
+    \column{1.5in}
+    
+    We may also \alert{pad} the image so that the valid convolution at
+    each layer has the same size as the input to the layer:
+
+    \medskip
+    
+    Usually, the padding is 0.
+
+    \column{3in}
+    
+    \myfig{2.5in}{goodfellow-fig9-13}{Goodfellow et al. (2016), Figure 9.13}
+
+  \end{columns}
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Padding}
+
+  Padding is important:
+  \begin{itemize}
+  \item Without padding, the border would shrink after each
+    convolution, and information at the image border would be lost.
+  \item In most cases, we should add padding necessary so that the
+    output feature map has the same size as the input feature map when
+    the stride is 1.
+  \item The most common choice for padding seems to be 0-padding.
+  \item Matt likes copy-border padding, but most libraries do not implement it.
+  \item Most libraries do implement ``reflect'' padding which seems to
+    work well (and is better than zero-padding).
+  \end{itemize}
+  
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Refinements: local connection}
+
+In \alert{unshared convolution}, we perform the same dot product of a
+set of weights over a local region in the input, but do not use a shared
+kernel.
+
+\medskip
+
+This makes sense when we need local sparse computation but have
+no reason to apply the same operation throughout the input.
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Refinements: local connection}
+
+Comparison of local connections, convolution, and full connection:
+
+\myfig{2in}{goodfellow-fig9-14}{Goodfellow et al. (2016), Figure 9.14}
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Refinements: organizing by channel}
+
+We may also want separate kernels for each input channel:
+
+\myfig{1.8in}{goodfellow-fig9-15}{Goodfellow et al. (2016), Figure 9.15}
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Refinements: tiled convolution}
+
+Another variation is \alert{tiled convolution} in which we combine
+the idea of having separate weights for neighboring positions in the
+feature map but also sharing parameters:
+
+\myfig{1.6in}{goodfellow-fig9-16}{Goodfellow et al. (2016), Figure 9.16}
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Refinements: transpose convolution}
+
+\alert{Transpose convolution} means multiplication by the transpose of the
+matrix defined by convolution. It is used for
+\begin{itemize}
+\item Backpropagating error derivatives through a convolutional layer
+\item Reconstructing input units from hidden units in an autoencoder
+\end{itemize}
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Backpropagation}
+
+Suppose we have a convolution tensor $\mat{K}$ applied to multichannel
+tensor $\mat{V}$ with stride $s$: $c(\mat{K},\mat{V},s)$.
+
+\medskip
+
+Suppose the loss function is $\mat{J}(\mat{V},\mat{K})$.
+
+\medskip
+
+Forward propagation gives us $\mat{Z} = c(\mat{K},\mat{V},s)$.
+
+\medskip
+
+$\mat{Z}$ is propagated forward, then during backpropagation, we
+receive tensor $\mat{G}$ where
+$$\mat{G}_{i,j,k} = \frac{\partial}{\partial \mat{Z}_{i,j,k}}
+\mat{J}(\mat{V},\mat{K}) .$$
+
+The derivative of $\mat{J}$ with respect to weight $i,j,k,l$ in $\mat{K}$
+is
+$$ g(\mat{G},\mat{V},s)_{i,j,k,l} = \frac{\partial}{\partial \mat{K}_{i,j,k,l}}
+J(\mat{V},\mat{K}) =
+\sum_{m,n} \mat{G}_{i,m,n} \mat{V}_{j,(m-1)\times s+k,(n-1)\times s + l}.$$
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Backpropagation}
+
+The deltas to be backpropgated to previous layers are
+$$h(\mat{K},\mat{G},s)_{i,j,k} = \frac{\partial}{\partial \mat{V}_{i,j,k}}
+J(\mat{V},\mat{K})$$
+$$= \sum_{\substack{l,m\\ \textrm{s.t.} (l-1)\times s + m = j}}
+\sum_{\substack{n,p\\ \;\; \textrm{s.t.} (n-1)\times s + p = k}}
+\sum_q \mat{K}_{q,i,m,p} \mat{G}_{q,l,n}.$$
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Backpropagation}
+
+  How the bias term is done varies.
+
+  \medskip
+
+  For locally connected layers, each
+  unit would have its own bias.
+
+  \medskip
+
+  For convolutional layers, usually, each channel of the output has a
+  separate bias shared across all locations.
+
+  \medskip
+
+  Sometimes, each element in the output will have its own bias. This
+  is useful for example when we use 0 padding and border elements
+  receive less input than interior elements.
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Types of outputs and inputs}
+
+  Besides classification, convolutional networks can also be used to
+  produce a \alert{structured} output, itself a multidimensional
+  tensor such as an image.
+
+  \medskip
+  
+  Besides images, the input data could be a single channel audio
+  waveform, or a sequence of feature vectors corresponding to samples
+  over time, or a 3D volume, or a color video,
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Computational speed}
+
+  To make convolution efficient, we may use \alert{parallel hardware}
+  (GPUs).
+
+  \medskip
+
+  In some cases, kernels may be \alert{separable}, e.g., a 2D
+  convolution is the composition of two 1D convolutions in the
+  different dimensions.
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Convolutions without supervised learning}
+
+  How to obtain convolution kernels without expensive backpropagation?
+  \begin{itemize}
+  \item Random kernels
+  \item Design by hand (e.g., edge detectors or Gabor filters)
+  \item Learn with an unsupervised criterion, e.g., k-means clustering of
+   image patches in the training set.
+  \end{itemize}
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Connections with brain science}
+
+  There is an interesting correspondence between low-level processing
+  in well-trained convolutional neural networks for visual tasks and
+  the kinds of visual feature extractors known to be present in the
+  mammalian visual system:
+
+  \myfig{3in}{goodfellow-fig9-19}{Goodfellow et al. (2016), Figure 9.19}
+
+\end{frame}
+
+
 \begin{frame}{CNNs for image classification}{Origins}
 
   The story of the CNN begins in the 1980s with Fukushima's
@@ -1147,11 +1927,13 @@ matrix([[3, 4, 5],
 
 \begin{frame}{CNNs for image classification}{Origins}
 
-  The 2000s were a golden era for feature-based methods like HOG.
+  The 2000s were a golden era for feature-based approaches to visual
+  object recognition such as HOG (histograms of oriented gradients).
 
   \medskip
 
-  Some research continued, but most vision researchers ignored CNNs.
+  Some research on neural networks continued, but most vision
+  researchers ignored CNNs.
 
   \medskip
 
@@ -1160,7 +1942,7 @@ matrix([[3, 4, 5],
 
   \medskip
 
-  2006: the PASCAL Visual Object Classification (VOC) challenge
+  In 2006, the PASCAL Visual Object Classification (VOC) challenge
   started with 20 object categories and ran with more difficult
   datasets each year until 2012.
 
@@ -1289,8 +2071,7 @@ matrix([[3, 4, 5],
   \end{itemize}
 
   These factors give us hope that CNNs may have the capacity to learn
-  large datasets with relatively few parameters.\footnote{We will see
-    in the next couple weeks that
+  large datasets with relatively few parameters.\footnote{Recall that
     fewer parameters generally means lower VC dimension which in turn
     generally means better generalization.}
 
@@ -1319,40 +2100,31 @@ matrix([[3, 4, 5],
 \end{frame}
 
 
-\begin{frame}{CNNs for image classification}{Aside: why convolutions?}
+\begin{frame}{CNNs for image classification}{AlexNet (2012)}
 
-  2D convolution and cross-correlation operations give us the linear
-  response of a 2D filter applied to the pixels in a local region of
-  an image.
+  \begin{columns}
 
-  \medskip
+    \column{2.2in}
+    
+    \myfig{2in}{krizhevsky-fig1}{Krizhevsky et al.\ (2012), Fig.\ 1}
 
-  See any of many examples on YouTube, such as
-  \url{https://www.youtube.com/watch?v=_iZ3Q7VXiGI} !
+    \column{2.3in}
+    
+    The authors were among the first to exploit the benefits of ReLU
+    over other nonlinear activation functions.
 
-  \medskip
+    \medskip
 
-  The simplest example is edge detection using, for example, Sobel
-  filters:
+    ReLU models learn much faster than $\tanh$ models. $\tanh$
+    ``saturates'' at large absolute values (learning depends on the
+    slope of the activation function).
 
-  $$\begin{bmatrix} 1 & 0 & -1 \\ 2 & 0 & -2 \\ 1 & 0 & -1 \end{bmatrix}
-  \;\;\;\;\;
-  \begin{bmatrix} 1 & 2 & 1 \\ 0 & 0 & 0 \\ -1 & -2 & -1 \end{bmatrix}$$
-
-  \medskip
-
-  [In computer vision, we often call cross-correlation ``convolution.'']
-
-  \medskip
-
-  One of the insights of the CNN is to perform convolutions
-  \alert{hierarchically}.
-
-  \medskip
+    \medskip
   
-  The result of one convolution is transformed by a nonlinearity
-  and possibly downscaled to obtain a \alert{feature map} that is then
-  convolved with higher-level filters.
+    Training a 4-layer network on CIFAR 10: solid line shows error
+    rate with ReLU, dashed line shows error rates with tanh.
+
+  \end{columns}
   
 \end{frame}
 
@@ -1400,64 +2172,58 @@ matrix([[3, 4, 5],
 \end{frame}
 
 
-\begin{frame}{CNNs for image classification}{Aside: convolutional layers}
+\begin{frame}{CNNs for image classification}{AlexNet (2012)}
 
-  How do the convolutional layers work?
-
-  \medskip
-
-  A convolution may apply to the \alert{input} or \alert{a feature map
-    from a previous layer}.
+  After ReLU, the next most important technique used is
+  \alert{local response normalization}, which reduces errors by more than 1\%.
 
   \medskip
 
-  Typically, convolutions apply to all of the feature maps in the
-  previous layer: this is called \alert{convolution over volume}.
-  \begin{itemize}
-  \item For the input: three maps (R, G, and B) or one map (grayscale).
-  \item For an inner layer: the number of kernels. This would be,
-    e.g., 96 for AlexNet's second convolutional layer, except that
-    AlexNet splits into two separate hierarchies so it is 48 for each
-    stream.
-  \end{itemize}
+  Non-saturating activation functions means we can have very large
+  activations for some inputs.
 
-\end{frame}
-
-
-\begin{frame}{CNNs for image classification}{Aside: convolutional layers}
-
-  \alert{Padding} is important:
-  \begin{itemize}
-  \item Without padding, the border would shrink after each
-    convolution, and information at the image border would be lost.
-  \item In most cases, we should add padding necessary so that the
-    output feature map has the same size as the input feature map when
-    the stride is 1.
-  \item The most common choice for padding seems to be 0-padding.
-  \item Matt likes copy-border padding, but most libraries do not implement it.
-  \item Most libraries do implement ``reflect'' padding which seems to
-    work well (and is better than zero-padding).
-  \end{itemize}
+  \medskip
   
+  Response normalization \alert{reduces large activations} while
+  \alert{preserving relative relationships} between different feature
+  maps.
+
+  \medskip
+  
+  Another term for this is \alert{local inhibition}, a property seen
+  in real neural circuits.
+
+  \medskip
+  
+  Letting $a^{i}_{x,y}$ represent the ReLU activation feature map $i$
+  at location $(x,y)$, the normalized response is
+  $$ b^{i}_{x,y} = a^{i}_{x,y} \left( k + \alpha \sum_{j = \max(0,
+    i-n/2)}^{\min( N-1,i+n/2)}\left(a^{j}_{x,y}\right)^2
+  \right)^\beta $$
+
+  \medskip
+
+  We are normalizing each unit
+  relative to its $n$ neighboring features.
+
 \end{frame}
 
 
-\begin{frame}{CNNs for image classification}{Aside: convolutional layers}
+\begin{frame}{CNNs for image classification}{AlexNet (2012)}
 
-  \alert{Stride} is also important:
-  \begin{itemize}
-  \item Typically, the convolution operation is applied at every pixel
-    of the input (stride $=$ 1).
-  \item When spatial resolution is less important or neighboring
-    receptive fields overlap significantly, we may skip some pixels of
-    the input (stride $>$ 1).
-  \item Most architectures use a stride of 1 for 3$\times$3
-    convolutions and a stride of 1--3 for 5$\times$5 convolution.
-  \item The trend: smaller kernels and more layers $\rightarrow$ small
-    strides (11$\times$11 convolutions as in AlexNet are not often
-    seen).
-  \end{itemize}
-    
+  Another technique is \alert{overlapping pooling}.
+
+  \medskip
+
+  Before AlexNet, pooling usually used a stride equal to the width of
+  the pooling region, so that neighboring pooled units did not have
+  overlapping receptive fields.
+
+  \medskip
+  
+  The authors find, however, that overlapping pooling is effective. They
+  use a stride of 2 and a pooling region of size 3x3.
+
 \end{frame}
 
 
@@ -1484,8 +2250,8 @@ matrix([[3, 4, 5],
 
   \medskip
 
-  The second trick is \alert{dropout} at the (first two) convolutional
-  layers:
+  The second trick is \alert{dropout} at the (first two) fully
+  connected layers:
   \begin{itemize}
   \item Training time: each output in the feature map is set to 0 with
     probability 0.5. Zeroed outputs do not get any backpropagated
@@ -1510,6 +2276,18 @@ matrix([[3, 4, 5],
     convolutional layer).
   \end{itemize}
 
+  \end{frame}
+
+
+\begin{frame}{CNNs for image classification}{AlexNet (2012)}
+
+  The first convolutional layer learns representations reminiscent of
+  neurons in visual cortex:
+
+  \myfig{2in}{krizhevsky-fig3}{Krizhevsky et al.\ (2012), Fig.\ 3}
+
+  This is after 90 epochs through the 1.2 million images in ImageNet.
+  
   \medskip
 
   The result: top-5 error rate dropped from 26\% (2011) to 15.3\%. 
@@ -1523,7 +2301,6 @@ matrix([[3, 4, 5],
   top-5 error rate to 12\%.
   
 \end{frame}
-
 
 \begin{frame}{CNNs for image classification}{GoogLeNet (2014)}
 
@@ -1557,6 +2334,36 @@ matrix([[3, 4, 5],
 
   \end{columns}
   
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{GoogLeNet (2014)}
+
+  Before Inception, accuracy was achieved by larger networks with more
+  feature maps and more parameters.
+
+  \medskip
+
+  Overfitting is avoided by aggressive data augmentation and dropout.
+
+  \medskip
+
+  Inception idea: can we have deeper, wider networks with a fixed computational
+  budget?
+
+  \medskip
+
+  Goal: 1.5 billion multiply-adds at inference time.
+
+  \medskip
+
+  This was achieved with a 22-layer (27 including pooling layers)
+  model with a modular structure.
+
+  \medskip
+
+  The module idea was inspired by ``Network in Network.''
+
 \end{frame}
 
 
@@ -1605,6 +2412,60 @@ matrix([[3, 4, 5],
 
 \begin{frame}{CNNs for image classification}{GoogLeNet (2014)}
 
+  1x1 convolutions occur both \alert{before} larger 3x3 and 5x5
+  convolutions, and \alert{after} them.
+
+  \medskip
+
+  Before: a \alert{reduction} step that reduces the number of
+  feature maps the 3x3 or 5x5 operates over, making them more
+  efficient.
+
+  \medskip
+	
+  After: a \alert{project} step where redundancy is removed
+  and output dimensionality is reduced.
+
+  \medskip
+
+  Besides an approximation to network-in-network, the architecture
+  is intended to approximate theoretically optimal construction of
+  \alert{large, sparse, locally connected layers} that progressively
+  cluster correlated features at previous layers.
+
+  \medskip
+
+  Proportion of 3x3 and 5x5 convolutions increases at later layers.
+
+  \medskip
+
+  Pooling layers are used, but unpooled features are also propagated,
+  to get both spatial accuracy and translation invariance.
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{GoogLeNet (2014)}
+
+  Auxiliary classifiers are used at intermediate layers to increase
+  their discrimination ability.
+
+  \medskip
+
+  Training was CPU-only, with SGD, Polyak averaging, multiple models
+  at prediction time, and aggressive data augmentation.
+
+  \medskip
+
+  The model was also used for detection in ILSVRC 2014, applying selective
+  search for region proposals and GoogLeNet to classify
+  those regions, without bounding box regression.
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{GoogLeNet (2014)}
+
   GoogLeNet Image classification setup:
   \begin{itemize}
   \item 7 different models with different training pattern sampling. 
@@ -1617,6 +2478,231 @@ matrix([[3, 4, 5],
   \item Total test images per input: $4\times 3\times 6\times 2 = 144$.
   \end{itemize}
   
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Inception v3 (2016)}
+
+  After 2014, research on image classification network continued
+  at a fast pace.
+
+  \medskip
+
+  Several labs continued to improve their models to perform better
+  at ILSVRC.
+
+  \medskip
+
+  Szegedy and colleagues increased GoogLeNet's size to 5 billion
+  multiply-adds, trying to use that budget as efficiently as possible.
+
+  \medskip
+
+  Szegedy, C., Vanhoucke, V., Ioffe, S., Shlens, J., and Wojna, Z. (2016),
+  Rethinking the Inception architecture for computer vision, \textit{CVPR}.
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Inception v3 (2016)}
+
+  Some principles:
+  \begin{itemize}
+    \item Avoid information bottlenecks early in processing. Decrease
+      dimensionality gradually as we move deeper.
+    \item Keep dimensionality high for local processing.
+    \item Reduce dimensionality before performing spatial aggregation.
+    \item Balance the width and the depth of the network. Increased
+      capacity should be achieved by increasing both depth and width.
+  \end{itemize}
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Inception v3 (2016)}
+
+  The authors discuss a variety of ways of reducing computation
+  without reducing representational capacity.
+
+  \medskip
+
+  Example: replacing a 5x5 convolution with a hierarchy of two
+  3x3s:
+
+  \medskip
+
+  \myfig{2in}{szegedy-15-fig1}{Szegedy et al. (2016), Figure 1}
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Inception v3 (2016)}
+
+  When we factorize convolutions in this way, should we apply
+  ReLU to every layer or only at the end?
+
+  \medskip
+
+  Experiments show that ReLU at every step is better than linear
+  activations in the factored layers:
+
+  \medskip
+
+  \myfig{3in}{szegedy-15-fig2}{Szegedy et al. (2016), Figure 2}
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Inception v3 (2016)}
+
+  The 5x5 factorization gives a new structure for the basic
+  Inception module:
+
+  \begin{columns}
+
+  \column{2in}
+
+  \myfig{1.5in}{szegedy-15-fig4}{Szegedy et al. (2016), Figure 4}
+
+  \column{2in}
+
+  \myfig{1.5in}{szegedy-15-fig5}{Szegedy et al. (2016), Figure 5}
+
+  \end{columns}
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Inception v3 (2016)}
+
+  \begin{columns}
+
+  \column{3in}
+  
+  Another way of factorizing:
+  replacing a 3x3 with a 3x1 followed by a 1x3.
+
+  \medskip
+
+  This process can go on; any $n$x$n$ convolution can be
+  factored into a $n$x1 followed by a 1x$n$.
+
+  \medskip
+
+  The authors find this is not very useful in early 
+  layers, but is effective for medium-sized grids of 12-20
+  units wide.
+
+  \column{1.5in}
+
+  \myfig{1.4in}{szegedy-15-fig3}{Szegedy et al. (2016), Figure 3}
+
+  \end{columns}
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Inception v3 (2016)}
+
+  \begin{columns}
+
+  \column{2in}
+
+  Inception module for medium-sized grids:
+
+  \medskip
+
+  \myfig{1.8in}{szegedy-15-fig6}{Szegedy et al. (2016), Figure 6}
+
+  \column{2in}
+
+  Inception module for coarsest grids:
+	  
+  \medskip
+
+  \myfig{1.8in}{szegedy-15-fig7}{Szegedy et al. (2016), Figure 7}
+
+  \end{columns}
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Inception v3 (2016)}
+
+  The side classifiers from GoogLeNet turn out not to be as effective
+  as first thought.
+
+  \medskip
+
+  Removing one of the two side classifiers does not adversely affect
+  performance.
+
+  \medskip
+
+  The side classifier seems to work as a regularizer rather than
+  helping to create more discriminative features in early layers.
+
+  \medskip
+
+  Auxiliary classifier on top of the last 17x17 feature map:
+
+  \medskip
+
+  \myfig{2in}{szegedy-15-fig8}{Szegedy et al. (2016), Figure 8}
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Inception v3 (2016)}
+
+  \begin{columns}
+
+  \column{2in}
+
+  There are multiple ways of reducing grid size. The left structure
+  introduces a bottleneck. The right structure avoids the bottleneck
+  but introduces more computation.
+
+  \medskip
+
+  \myfig{1.8in}{szegedy-15-fig9}{Szegedy et al. (2016), Figure 9}
+
+  \column{2in}
+
+  Alternative: perform pooling with stride 2 and convolution with stride
+  2 in parallel:
+
+  \medskip
+
+  \myfig{1.8in}{szegedy-15-fig10}{Szegedy et al. (2016), Figure 10}
+
+  \end{columns}
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Inception v3 (2016)}
+
+  Putting all these ideas together resulted in Inception-v2, a 42-layer
+  extension of GoogLeNet.
+
+  \medskip
+
+  Additional features leading to Inception-v3:
+  \begin{itemize}
+    \item RMSprop optimizer
+    \item Label smoothing: rather than one-hot ground truth, we
+      mix the one-hot distribution with the prior distribution
+      over the classes.
+    \item Batch normalization of FC layers and conv layers in the
+      side network.
+  \end{itemize}
+
+  \medskip
+
+  Result was the highest single-crop top-1 accuracy on ILSVRC to
+  date.
+
 \end{frame}
 
 
@@ -1667,11 +2753,28 @@ matrix([[3, 4, 5],
   though adding more layers improves training error to a point,
   eventually, training error starts to \alert{increase}.
 
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{ResNet (2015)}
+
+  \myfig{3.8in}{he-fig1}{He et al.\ (2016), Fig.\ 1}
+
   \medskip
 
-  As we are talking about training error, the degradation is
-  \alert{not overfitting} --- it is a purely due to the vanishing
-  integrity of the training signal as the network gets deeper.
+  As we are talking about training error, the degredation is
+  \alert{not overfitting}.
+
+  \medskip
+
+  A deeper model should be at least as good as its shallow cousin
+  (think about constructing a deep network from a shallow one by
+  adding identity mappings).
+
+  \medskip
+  
+  Degredation is due to the vanishing integrity of the training signal
+  as the network gets deeper.
 
 \end{frame}
 
@@ -1689,7 +2792,7 @@ matrix([[3, 4, 5],
 
   To learn a mapping ${\cal H}(\vec{x})$, we let intermediate layers
   learn another mapping ${\cal F}(\vec{x}) = {\cal H}(\vec{x})-\vec{x}$
-  then compute ${\cal F}(\vec{x})$ at the output.
+  then compute ${\cal H}(\vec{x})$ at the output.
 
   \medskip
 
@@ -1720,6 +2823,406 @@ matrix([[3, 4, 5],
 \end{frame}
 
 
+\begin{frame}{CNNs for image classification}{ResNet (2015)}
+
+  \begin{columns}
+
+    \column{1.4in}
+    
+    \myfig{1.2in}{he-fig3}{He et al.\ (2016), Fig.\ 3}
+
+    \column{3.1in}
+
+    Baseline model (middle) is a 34-layer network
+    \begin{itemize}
+    \item Mostly 3$\times$3 convolutions
+    \item Equal-size mappings always have the same number of filters
+    \item Mappings that downsample do so by half, with double the
+      number of filters
+    \end{itemize}
+
+    \medskip
+
+    Shortcut connections in residual version (right) are performed
+    by 1$\times$1 convolutions with stride of 2.
+    
+  \end{columns}
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{ResNet (2015)}
+
+  \myfig{4in}{he-fig4}{He et al.\ (2016), Fig.\ 4}
+
+  \medskip
+
+  Left: plain networks with 18 or 34 layers. Right: residual networks
+  with 18 or 34 layers.
+
+  \medskip
+
+  Residual layers give better convergence for the small network and
+  better accuracy for the larger network. Only the larger residual
+  model pushes training error lower than validation error.
+  
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{ResNet (2015)}
+
+  Identity or projection? Experiments show not much impact of either
+  choice.
+
+  \medskip
+
+  The authors decided to use identity for same-size mappings
+  and projection for decreased-size mappings.
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{ResNet (2015)}
+
+  \myfig{4in}{he-fig5}{He et al.\ (2016), Fig.\ 5}
+
+  \medskip
+
+  Ordinary residual block (left) and bottleneck residual block (right).
+
+  \medskip
+
+  Bottlenecks do not seem to hurt performance and are more economical
+  in terms of calculations and number of parameters, so are used in
+  the 152-layer ResNet.
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{ResNet (2015)}
+
+  \myfig{4.2in}{he-fig6}{He et al.\ (2016), Fig.\ 6}
+
+  \medskip
+
+  CIFAR results.
+  Left: plain networks perform worse with more layers, both training
+  and test.
+
+  \medskip
+
+  Middle: residual networks perform better with more layers, both
+  training and test.
+
+  \medskip
+
+  Right: extremely large residual networks with more than 1000 layers
+  learn well but exhibit overfitting.
+  
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{ResNet (2015)}
+
+  \begin{columns}
+
+    \column{2.5in}
+    
+    \myfig{2.4in}{he-fig7}{He et al.\ (2016), Fig.\ 7}
+
+    \column{2in}
+
+    Top: standard deviation of layer output responses after BN but
+    before skip connection adding and ReLU.
+
+    \medskip
+
+    Bottom: same data, sorted.
+
+    \medskip
+
+    Residual layers are less active than plain layers.
+
+  \end{columns}
+  
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Inception-ResNet (2016)}
+
+  The Inception group, inspired by the success of ResNet in ILSVRC 2015 and
+  other competitions, considered whether residual connections can improve
+  Inception.
+
+  \medskip
+  
+  Szegedy, C., Ioffe, S., Vanhoucke, V., and Alemi, A. (2017),
+  Inception-v4, Inception-ResNet and the Impact of Residual
+  Connections on Learning. \textit{Association for the Advancement
+    of Artificial Intelligence Conference on AI (AAAI)}.
+
+  \medskip
+
+  A version of Inception-ResNet achieved a 3.08\% top-5 error rate on
+  ILSVRC 2016 (but was beaten by Trimps-Soushen with 2.99\%).
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Inception-ResNet (2016)}
+
+  \begin{columns}
+    
+    \column{1.5in}
+
+    \myfig{1in}{szegedy-16-fig3}{Szegedy et at.\ (2017), Fig.\ 3}
+
+    \column{3in}
+
+    Stem network used at the input of Inception v4 and
+    Inception-ResNet v2.
+
+    \medskip
+
+    No ``V'' means the input is same-padded so that output is same
+    size as input.
+
+    \medskip
+
+    ``V'' means valid only.
+    
+  \end{columns}
+  
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Inception-ResNet (2016)}
+
+  \begin{columns}
+
+    \column{2.2in}
+    
+    \myfig{2in}{szegedy-16-fig4}{Szegedy et at.\ (2017), Fig.\ 4}
+
+    \medskip
+
+    35$\times$35 Inception module for Inception v4 (Inception A).
+
+    \column{2.2in}
+    
+    \myfig{2in}{szegedy-16-fig5}{Szegedy et at.\ (2017), Fig.\ 5}
+
+    \medskip
+
+    17$\times$17 Inception module for Inception v4 (Inception B).
+
+    \end{columns}
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Inception-ResNet (2016)}
+
+  \begin{columns}
+
+    \column{2.2in}
+    
+    \myfig{2in}{szegedy-16-fig6}{Szegedy et at.\ (2017), Fig.\ 6}
+
+    \medskip
+
+    8$\times$8 Inception module for Inception v4 (Inception C).
+    
+    \column{2.2in}
+    
+    \myfig{2in}{szegedy-16-fig7}{Szegedy et at.\ (2017), Fig.\ 7}
+
+    \medskip
+
+    Module for reduction from 35$\times$35 to $17\times 17$ (Reduction-A).
+
+  \end{columns}
+  
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Inception-ResNet (2016)}
+
+  \begin{columns}
+
+    \column{2in}
+    
+    \myfig{2in}{szegedy-16-fig8}{Szegedy et at.\ (2017), Fig.\ 8}
+
+    \medskip
+
+    Module for reduction from $17\times 17$ to $8\times 8$ (Reduction-B).
+
+    \column{1.1in}
+
+    \myfig{1in}{szegedy-16-fig9}{Szegedy et at.\ (2017), Fig.\ 9}
+
+    \column{1.4in}
+  
+    Complete Inception v4 model.
+
+  \end{columns}
+  
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Inception-ResNet (2016)}
+
+  \begin{columns}
+
+    \column{2in}
+    
+    \myfig{2in}{szegedy-16-fig10}{Szegedy et at.\ (2017), Fig.\ 10}
+
+    \medskip
+
+    35$\times$35 Inception ResNet module (Inception-ResNet-A).
+
+    \column{2in}
+    
+    \myfig{1.8in}{szegedy-16-fig11}{Szegedy et at.\ (2017), Fig.\ 11}
+
+    \medskip
+
+    17$\times$17 Inception ResNet module (Inception-ResNet-B).
+
+  \end{columns}
+  
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Inception-ResNet (2016)}
+
+  \begin{columns}
+
+    \column{2in}
+    
+    \myfig{2in}{szegedy-16-fig12}{Szegedy et at.\ (2017), Fig.\ 12}
+
+    \medskip
+
+    17$\times$17 to 8$\times$8 reduction (Reduction-B) for
+    Inception-ResNet-v1.
+
+    \column{2in}
+    
+    \myfig{1.8in}{szegedy-16-fig13}{Szegedy et at.\ (2017), Fig.\ 13}
+
+    \medskip
+    
+    8$\times$8 Inception-ResNet module (Inception-ResNet-C).
+    
+  \end{columns}
+  
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Inception-ResNet (2016)}
+
+  \begin{columns}
+
+    \column{1.3in}
+    
+    \myfig{1in}{szegedy-16-fig14}{Szegedy et at.\ (2017), Fig.\ 14}
+
+    \column{0.9in}
+    
+    Stem of Inception-ResNet-v1.
+
+    \column{1.2in}
+    
+    \myfig{1.1in}{szegedy-16-fig15}{Szegedy et at.\ (2017), Fig.\ 15}
+
+    \column{0.9in}
+    
+    Complete Incpetion-ResNet-v1 and Inception-ResNet-v2 architectures.
+    
+  \end{columns}
+  
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Inception-ResNet (2016)}
+
+  \begin{columns}
+
+    \column{2in}
+    
+    \myfig{2in}{szegedy-16-fig16}{Szegedy et at.\ (2017), Fig.\ 16}
+
+    \medskip
+
+    35$\times$35 module for
+    Inception-ResNet-v2 (Incpetion-ResNet-A).
+
+    \column{2in}
+    
+    \myfig{1.6in}{szegedy-16-fig17}{Szegedy et at.\ (2017), Fig.\ 17}
+
+    \medskip
+    
+    17$\times$17 module for Inception-ResNet-v2 (Inception-ResNet-B).
+    
+  \end{columns}
+  
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Inception-ResNet (2016)}
+
+  \begin{columns}
+
+    \column{2in}
+    
+    \myfig{2in}{szegedy-16-fig18}{Szegedy et at.\ (2017), Fig.\ 18}
+
+    \medskip
+
+    17$\times$17 reduction to 8$\times$8 module for
+    Inception-ResNet-v2 (Incpetion-ResNet-A).
+
+    \column{2in}
+    
+    \myfig{1.6in}{szegedy-16-fig19}{Szegedy et at.\ (2017), Fig.\ 19}
+
+    \medskip
+    
+    8$\times$8 module for Inception-ResNet-v2 (Inception-ResNet-C).
+    
+  \end{columns}
+  
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Inception-ResNet (2016)}
+
+  Conclusion from Inception-ResNet: training of Inception models is
+  faster with residual connections.
+
+  \medskip
+
+  Besides techniques for exploiting residual connections in Inception
+  modules, the paper introduces the idea of \alert{residual scaling}.
+
+  \medskip
+
+  Residual scaling was prompted by the finding that with large numbers
+  of filters, regardless of learning rate, later layers started to
+  produce only zeros due to unstable updates.
+
+  \medskip
+
+  Weighting the residuals added to a module's output by 0.1--0.3
+  before adding improved stability of training.
+  
+\end{frame}
+
+
 \begin{frame}{CNNs for image classification}{ILSVRC 2016}
 
   The classification challenge continued in 2016 and 2017.
@@ -1737,7 +3240,7 @@ matrix([[3, 4, 5],
 \end{frame}
 
 
-\begin{frame}{CNNs for image classification}{ILSVRC 2017}
+\begin{frame}{CNNs for image classification}{Squeeze and excitation (ILSVRC 2017)}
 
   The final recognition challenge was won with 2.25\% error rate by a
   team from Momenta (a Chinese self-driving car company) and
@@ -1754,15 +3257,116 @@ matrix([[3, 4, 5],
   networks.  In \textit{IEEE Computer Society Conference on Computer
     Vision and Pattern Recognition}.
 
-  \medskip
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Squeeze and excitation (ILSVRC 2017)}
 
   Basic idea: reweight (scale) channels globally according to
-  informativeness.
+  informativeness. The technique is called \alert{feature
+    recalibration}.
 
   \medskip
 
+  We have a transformation $\mat{F} : {\cal X} \mapsto {\cal U}$ with
+  ${\cal X} = \Rset^{H' \times W' \times C'}$ and ${\cal U} =
+  \Rset^{H\times W\times C}$.
+
+  \medskip
+
+  A \alert{squeeze} operation aggregates feature map $\mat{U} \in
+  {\cal U}$ across dimensions $H \times W$ to produce a \alert{channel
+    descriptor} vector $\vec{z}$. It's a simple average of the
+  elements in each channel (no parameters).
+
+  \medskip
+  
   \myfig{4in}{hu-fig1}{Hu, Shen, and Sun (2018), Fig.\ 1}
 
+  \medskip
+
+  Excitation is more complicated...
+  
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Squeeze and excitation (ILSVRC 2017)}
+
+  A squeeze is followed by an \alert{excitation} operation that performs a
+  sample-specific reweighting of the channels of $\mat{U}$.
+  \[ \vec{s} = \vec{F}_{ex}(\vec{z},\mat{W}) = \sigma(g(\vec{z},\mat{W}))
+  = \sigma(\mat{W}_2\delta(\mat{W}_1\vec{z})) \]
+
+  $\delta(\cdot)$ is ReLU, and $\sigma(\cdot)$ is the logistic sigmoid.
+
+  \medskip
+  
+  $\mat{W}_1$ performs dimensionality reduction, and $\mat{W}_2$
+  performs dimensionality expansion.
+
+  \medskip
+
+  The elements of $\vec{s}$ are then used to scale $\mat{U}$.
+
+  \medskip
+  
+  For SE to be useful, we can see that $\delta(\mat{W}_1\vec{z})$
+  should be a low-dimensional coding of the global activity of each
+  feature map based on which $\mat{W}_2$ will decide which feature
+  maps to weight more or less actively.
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Squeeze and excitation (ILSVRC 2017)}
+
+  SE can be applied to simple CNNs like AlexNet easily. The authors
+  also show how to apply SE to Inception modules and ResNet.
+
+  \medskip
+
+  \begin{columns}
+    \column{2.2in}
+    \myfig{2in}{hu-fig2}{Hu, Shen, and Sun (2018), Fig.\ 2}
+    \column{2.2in}
+    \myfig{2in}{hu-fig3}{Hu, Shen, and Sun (2018), Fig.\ 3}
+  \end{columns}
+
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Squeeze and excitation (ILSVRC 2017)}
+
+  The approach improves the single-crop ImageNet
+  performance of several models:
+
+  \medskip
+  
+  \myfig{4.5in}{hu-table2}{Hu, Shen, and Sun (2018), Table 2}
+  
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Squeeze and excitation (ILSVRC 2017)}
+
+  The performance improvement is immediate and consistent:
+
+  \medskip
+  
+  \myfig{4.5in}{hu-fig4}{Hu, Shen, and Sun (2018), Fig.\ 4}
+  
+\end{frame}
+
+
+\begin{frame}{CNNs for image classification}{Squeeze and excitation (ILSVRC 2017)}
+
+  SE also improves the performance of smaller networks aimed at mobile
+  devices:
+
+  \medskip
+  
+  \myfig{4in}{hu-table3}{Hu, Shen, and Sun (2018), Table 3}
+  
 \end{frame}
 
 
@@ -1773,43 +3377,11 @@ matrix([[3, 4, 5],
   \item Use small convolutions
   \item Go deeper
   \item Reduce dimensionality and number of parameters when possible
-  \item Combine multiple models
+  \item Combine multiple models for improved performance
   \item Learn residuals rather than direct mappings
   \item Amplify informative channels
   \end{itemize}
   
-\end{frame}
-
-
-\begin{frame}{CNNs for image classification}{Exercises}
-
-Some informative exercises:
-\begin{itemize}
-\item Derive the backpropagation rule for convolutional layers
-\item Derive the backpropagation rule for a softmax loss layer
-\end{itemize}
-
-\medskip
-
-Hint 1:
-Assume you already have $\delta^{[l]}_{ijk}$, equal to
-$\frac{\partial \cal L}{z_{ijk}}$, the net input to the $(i,j)$-th
-element of feature map $k$ in layer $l$. Figure out what is
-$\frac{\partial \cal L}{\partial w^{[l]}_{mnok}}$, the weight
-for to the $(m,n,o)$-th weight for feature map $k$ in layer $l$.
-
-\end{frame}
-
-
-\begin{frame}{CNNs for image classification}{Exercises}
-
-Hint 2: refer to the lecture notes on the GLM and multinomial distribution.
-The posterior estimate for a GLM is the softmax
-\[ p(y = i \mid \vec{x}; \vec{\Theta}) = \frac{e^{\vec{\theta}_i^\top\vec{x}}}{\sum_{j=1}^k e^{\vec{\theta}_j^\top\vec{x}}}, \]
-and the log likelihood is
-\[ \ell(\vec{\Theta}) = \sum_{i=1}^m\log \prod_{l=1}^k \left(
-\frac{e^{\vec{\theta}_l^\top\vec{x}^{(i)}}}{\sum_{j=1}^k e^{\vec{\theta}_j^\top\vec{x}^{(i)}}} \right)^{\delta(y^{(i)}=l)}. \]
-
 \end{frame}
 
 %======================================================================
