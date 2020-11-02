@@ -1,0 +1,1237 @@
+\documentclass{beamer}
+
+\mode<presentation>
+{
+  \setbeamertemplate{background canvas}[square]
+  \pgfdeclareimage[width=6em,interpolate=true]{dsailogo}{../dsai-logo}
+  \pgfdeclareimage[width=6em,interpolate=true]{erasmuslogo}{../erasmus-logo}
+  \titlegraphic{\pgfuseimage{dsailogo} \hspace{0.2in} \pgfuseimage{erasmuslogo}}
+  %\usetheme{default}
+  \usetheme{Madrid}
+  \usecolortheme{rose}
+  \usefonttheme[onlysmall]{structurebold}
+}
+
+\usepackage{pgf,pgfarrows,pgfnodes,pgfautomata,pgfheaps,pgfshade}
+\usepackage{amsmath,amssymb}
+\usepackage{graphics}
+\usepackage{ragged2e}
+\usepackage{array}
+\usepackage[latin1]{inputenc}
+\usepackage{colortbl}
+\usepackage[absolute,overlay]{textpos}
+\setlength{\TPHorizModule}{30mm}
+\setlength{\TPVertModule}{\TPHorizModule}
+\textblockorigin{10mm}{10mm}
+\usepackage[english]{babel}
+\usepackage{listings}
+\setbeamercovered{dynamic}
+
+\AtBeginSection[]{
+  \begin{frame}<beamer>
+  \frametitle{Outline}
+  \tableofcontents[currentsection]
+  \end{frame}
+}
+
+\title[Machine Learning]{Machine Learning\\Learning Theory}
+\author{dsai.asia}
+\institute[]{
+  Asian Data Science and Artificial Intelligence Master's Program}
+\date{}
+
+% My math definitions
+
+\renewcommand{\vec}[1]{\boldsymbol{#1}}
+\newcommand{\mat}[1]{\mathtt{#1}}
+\newcommand{\ten}[1]{\mathcal{#1}}
+\newcommand{\crossmat}[1]{\begin{bmatrix} #1 \end{bmatrix}_{\times}}
+\renewcommand{\null}[1]{{\cal N}(#1)}
+\newcommand{\class}[1]{{\cal C}_{#1}}
+\def\Rset{\mathbb{R}}
+\def\Expec{\mathbb{E}}
+\def\Pset{\mathbb{P}}
+\DeclareMathOperator*{\argmax}{argmax}
+\DeclareMathOperator*{\argmin}{argmin}
+\DeclareMathOperator*{\sign}{sign}
+\DeclareMathOperator*{\cov}{Cov}
+\DeclareMathOperator*{\diag}{diag}
+\DeclareMathOperator*{\var}{Var}
+\def\norm{\mbox{$\cal{N}$}}
+
+\newcommand{\stereotype}[1]{\guillemotleft{{#1}}\guillemotright}
+
+\newcommand{\myfig}[3]{\centerline{\includegraphics[width={#1}]{{#2}}}
+    \centerline{\scriptsize #3}}
+
+\begin{document}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%             CONTENTS START HERE
+
+%\setbeamertemplate{navigation symbols}{}
+
+\frame{\titlepage}
+
+%--------------------------------------------------------------------
+%\part<presentation>{Part name}
+%
+%\frame{\partpage}
+
+\begin{frame}
+\frametitle{Readings}
+
+Readings for these lecture notes:
+\begin{itemize}
+\item[-] Bishop, C. (2006), \textit{Pattern Recognition and Machine Learning},
+  Springer, Chapter 3.
+\item[-] Hastie, T., Tibshirani, R., and Friedman, J. (2016),
+  \textit{Elements of Statistical Learning: Data Mining, Inference, and
+    Prediction}, Springer, Chapter 7.
+\item[-] Ng, A. (2017), \textit{Learning Theory}.
+  Lecture note sets 4, 5 for CS229, Stanford University.
+\end{itemize}
+
+These notes contain material $\copyright$ Bishop (2006), Hastie et
+al.\ (2016), and Ng (2017).
+
+\end{frame}
+
+%======================================================================
+\section{Introduction}
+%======================================================================
+
+\begin{frame}{Introduction}
+
+  Machine learning is one of those areas where practical rules of
+  thumb tend to emerge before the theoretical principles that might
+  lead to those rules of thumb.
+
+  \medskip
+
+  In this series, we cover some of the most important theoretical
+  principles that underly or seek to explain our practical heuristics:
+  \begin{itemize}
+  \item The bias-variance tradeoff
+  \item How are training set error and test set error related?
+  \item When we use a high variance model that is prone to
+    overfitting, how can we control it?
+  \end{itemize}
+  
+\end{frame}
+
+%======================================================================
+\section{Bias-variance tradeoff}
+%======================================================================
+
+\begin{frame}{Bias-Variance tradeoff}{Test set error}
+
+  In machine learning, now you see that the general approach is to
+  \alert{fit} a model $h()$ to a \alert{training dataset} then
+  \alert{test} the model on a \alert{test dataset}.
+
+  \medskip
+
+  Consider the linear regression case. After estimating $h_{\vec{\theta}}$,
+  we compute the mean squared error over a test set:
+  \[ \Expec_{(\vec{x},y) \sim \text{test set}} (h_{\vec{\theta}}(\vec{x})-y)^2. \]
+
+  \medskip
+
+  What are the possible cause of the test set error being \alert{too high}?
+  \begin{itemize}
+  \item \alert{Overfitting}: the model is too closely tailored to the examples
+    in the training set and can't generalize to the test set.
+  \item \alert{Underfitting}: the model doesn't capture the link between the
+    features $\vec{x}$ and the target $y$.
+  \item \alert{Noise}: the data are inherently noisy, and no learning method
+    is going to give us lower error on a test set.
+  \end{itemize}
+  
+\end{frame}
+
+
+\begin{frame}{Bias-Variance tradeoff}{Randomness of $h_{\vec{\theta}}()$}
+
+  To formalize this intuition, we first suppose that the training and test
+  data are all sampled from a distribution
+  \[ y = f(\vec{x}) + \varepsilon, \]
+  where $\Expec(\varepsilon) = 0$ and $\var(\varepsilon) = \sigma^2$.
+
+  \medskip
+
+  We use a training set to estimate $h_{\vec{\theta}}()$ then apply to each pattern
+  $j$ in the test set.
+
+  \medskip
+
+  Our \alert{prediction} of the $y^{(j)}$ for $\vec{x}^{(j)}$ (note that $y^{(j)}$ is equal to
+  $f(\vec{x}^{(j)})+\varepsilon^{(j)}$) is $h_{\vec{\theta}}(\vec{x}^{(j)})$.
+
+  \medskip
+
+  Clearly, $\vec{x}^{(j)}$ is fixed when we compute
+  $h_{\vec{\theta}}(\vec{x}^{(j)})$, but
+  $h_{\vec{\theta}}(\vec{x}^{(j)})$ itself is \alert{random}, since it
+  depends on the values $\varepsilon^{(i)}$ in the training set.
+    
+\end{frame}
+
+
+\begin{frame}{Bias-Variance tradeoff}{Bias and variance}
+
+  For linear regression, we define the \alert{bias} of
+  $h_{\vec{\theta}}()$ as
+  \[ \Expec(h_{\vec{\theta}}(\vec{x})-f(\vec{x})) \]
+  and the \alert{variance} of $h_{\vec{\theta}}()$ as
+  \[ \Expec \left( (h_{\vec{\theta}}(\vec{x}) - f(\vec{x}))^2 \right). \]
+
+  \medskip
+
+  There are various formal notions of bias and variance for
+  classifiers, but there is no general agreement on which one is best.
+
+\end{frame}
+
+
+\begin{frame}{Bias-Variance tradeoff}{Bias and variance}
+
+  Mean squared error on the test data set can be decomposed as
+  \begin{eqnarray}
+    \text {Test MSE} & = & \Expec\left( (y - h_{\vec{\theta}}(\vec{x}))^2 \right) \nonumber \\
+    & = & \Expec\left( (
+    f(\vec{x}) + \varepsilon - h_{\vec{\theta}}(\vec{x})
+    )^2 \right) \nonumber \\
+    & = & \Expec (\varepsilon^2) + \Expec\left( (f(\vec{x}) - h_{\vec{\theta}}(\vec{x}))^2 \right) \label{squared-sum-eq} \\
+    & = & \sigma^2 + \left(\Expec(f(\vec{x})-h_{\vec{\theta}}(\vec{x}))\right)^2
+    + \var\left(f(\vec{x})-h_{\vec{\theta}}(\vec{x})\right) \label{squared-eq} \\
+    & = & \sigma^2 + \left(\text{Bias } h_{\vec{\theta}}(\vec{x})\right)^2 +
+    \var\left( h_{\vec{\theta}}(\vec{x}) \right) \nonumber
+  \end{eqnarray}
+
+\end{frame}
+
+
+\begin{frame}{Bias-Variance tradeoff}{Bias and variance}
+
+  How to get Equation 1?
+
+  \medskip
+
+  We have $\Expec((X_1+X_2)^2)$ where $X_1 = \varepsilon$ and $X_2 =
+  f(\vec{x})-h_{\vec{\theta}}(\vec{x})$.
+
+  \medskip
+
+  $\Expec((X_1+X_2)^2) = \Expec(X_1^2+X_2^2+2X_1X_2) =
+  \Expec(X_1^2)+\Expec(X_2^2)+2\Expec(X_1X_2)$.
+
+  \medskip
+  
+  Since $X_1$ and $X_2$ are independent we have $\Expec(X_1X_2) =
+  \Expec(X_1)\Expec(X_2)$. Since $\Expec(\varepsilon) = 0$, in this
+  special case, we get $\Expec((X_1+X_2)^2) =
+  \Expec(X_1^2)+\Expec(X_2^2)$.
+
+  \medskip
+
+  How to get Equation 2? Start with the definition of variance:
+  \begin{eqnarray*}
+    \var(X) & = & \Expec((X-\Expec(X))^2) \\
+            & = & \Expec(X^2-2X\Expec(X)+(\Expec(X))^2) \\
+            & = & \Expec(X^2)-2\Expec(X)\Expec(X)+\Expec(X)\Expec(X) \\
+            & = & \Expec(X^2) - (\Expec(X))^2 \\
+    \Expec(X^2) & = & (\Expec(X))^2 + \var(X)
+  \end{eqnarray*}
+    
+\end{frame}
+
+
+\begin{frame}{Bias-Variance tradeoff}{Bias and variance}
+
+  We cannot predict the \alert{noise} $\varepsilon$.
+
+  \medskip
+
+  The \alert{bias} term in the MSE is due to \alert{underfitting}.
+
+  \medskip
+
+  The \alert{variance} term of the MSE is related to \alert{overfitting}.
+
+  \medskip
+
+  We could say that our grand goal is to find the \alert{sweet spot} of no
+  underfitting and no overfitting, in which bias and variance are both
+  negligible.
+
+  \medskip
+
+  Unfortunately, in practice, when we reduce bias we usually increase
+  variance, and vice versa.
+  
+\end{frame}
+
+
+\begin{frame}{Bias-Variance tradeoff}{Bias and variance}
+
+  As an example, consider the case of linear regression with a single
+  input variable.
+
+  \medskip
+
+  We might try models with degree 1, degree 2, and degree 5 in the input variable:
+
+  \medskip
+
+  \myfig{3.5in}{over-under}{Ng (2017), CS229 lecture notes}
+
+  \medskip
+
+  The degree 1 model has high bias, and the degree 5 model has high
+  variance.
+
+\end{frame}
+
+
+%======================================================================
+\section{Probabilistic preliminaries}
+%======================================================================
+
+\begin{frame}{Probabilistic preliminaries}{Important bounds}
+
+  This section is directly from Ng (2017), \textit{Learning Theory}.
+
+  \medskip
+  
+  To get started in understanding the generalization ability of a
+  learning model, we need some preliminary facts useful for the
+  analysis: the \alert{union bound} and the \alert{Hoeffding
+    inequality}.
+
+  \medskip
+
+  \begin{block}{The \alert{union bound}}
+    Let $A_1, A_2, \ldots, A_k$ be $k$ different events resulting from
+    a probabilistic experiment that are not necessarily independent.
+    \[ P(A_1 \cup \cdots \cup A_k) \le P(A_1)+\cdots+P(A_k). \]
+  \end{block}
+
+  \medskip
+
+  The union bound follows from Kolmomgorov's axioms of probability
+  theory and is sometimes considered an axiom itself.
+  
+\end{frame}
+
+
+\begin{frame}{Probabilistic preliminaries}{Important bounds}
+
+  \begin{block}{The \alert{Hoeffding inequality} or the \alert{Chernoff bound}}
+
+    \begin{enumerate}
+    \item Let $Z_1, \ldots, Z_m$ be $m$ independent and identically
+      distributed random variables drawn from a Bernoulli($\phi$)
+      distribution (i.e., $P(Z_i=1)=\phi, P(Z_i=0)=1-\phi$).
+    \item Let $\hat{\phi} = \frac{1}{m}\sum_{i=1}^m Z_i$ be the mean
+      of the $Z_i$.
+    \item Let $\gamma > 0$ be fixed.
+    \end{enumerate}
+
+    Then
+    \[ P(|\phi-\hat{\phi}|>\gamma) \le 2 e^{-2\gamma^2m}. \]
+  \end{block}
+
+  \medskip
+
+  Essentially, this says that the average of $m$ Bernoulli($\phi$) variables
+  will be very close to $\phi$ as long as $m$ is large.
+  
+\end{frame}
+
+
+\begin{frame}{Probabilistic preliminaries}{Empirical risk and generalization error}
+
+  Now, let's restrict ourselves to binary classification with labels
+  $y \in \{0,1\}$.
+
+  \medskip
+
+  We are given a training set $S = \{(\vec{x}^{(i)},y^{(i)})\}_{i \in 1..m }$ of
+  size $m$ drawn i.i.d.\ from some distribution $\cal D$.
+
+  \medskip
+
+  The \alert{training error} or \alert{empirical risk} or
+  \alert{empirical error} of a hypothesis $h$ is defined as
+  \[ \hat{\varepsilon}(h) = \frac{1}{m}\sum_{i=1}^m \delta(h(\vec{x}^{(i)}) \ne y^{(i)}). \]
+
+  \medskip
+
+  The \alert{generalization error} is defined as
+  \[ \varepsilon(h) = P_{(\vec{x},y)\sim \cal D}(h(\vec{x})\ne y). \]
+
+  \medskip
+
+  The assumption that the \alert{training and test distributions are
+    the same} is one of the \alert{PAC} (probably approximately
+  correct) assumptions.
+  
+\end{frame}
+
+
+\begin{frame}{Probabilistic preliminaries}{ERM}
+
+  How to determine the best $h$?
+
+  \medskip
+
+  One way, called \alert{empirical risk minimization} (ERM) says to
+  pick the $h$ minimizing $\hat{\varepsilon}(h)$.
+
+  \medskip
+
+  For example, for the linear classifier
+  \[ h_{\vec{\theta}}(\vec{x}) = \delta(\vec{\theta}^\top \vec{x} \ge 0),\]
+  we pick
+  \[ \hat{\vec{\theta}} = \argmin_{\vec{\theta}}\hat{\varepsilon}(h_{\vec{\theta}}) . \]
+  and output $\hat{h}=h_{\hat{\vec{\theta}}}$.
+
+  \medskip
+
+  Note: algorithms such as logistic regression are not exactly ERM but
+  can be thought of as approximations to ERM.
+
+\end{frame}
+
+
+\begin{frame}{Probabilistic preliminaries}{ERM}
+
+  Now let's generalize beyond linear classifiers.
+
+  \medskip
+  
+  Any learning algorithm will consider some set of
+  hypotheses $\cal H$.
+
+  \medskip
+
+  Example: linear classifiers are defined by
+  \[ {\cal H} = \{ h_{\vec{\theta}} : h_{\vec{\theta}}(\vec{x}) =
+  \delta(\vec{\theta}^\top \vec{x} \ge 0), \vec{\theta} \in \Rset^{n+1}\}.
+  \]
+
+  Alternatively, ${\cal H}$ might be the set of all classifiers
+  represented by a particular neural network architecture.
+
+  \medskip
+  
+  Once we have $\cal H$, we can define ERM as determining
+  \[ \hat{h} = \argmin_{h\in\cal H}\hat{\varepsilon}(h). \]
+     
+\end{frame}
+
+%======================================================================
+\section{Bounds on generalization error for finite $\cal H$}
+%======================================================================
+
+\begin{frame}{Bounds on generalization error for finite $\cal H$}
+
+  We begin by assuming ${\cal H} = \{ h_1, \ldots, h_k \}$ is finite with $k$
+  possible hypotheses.
+
+  \medskip
+
+  We have $k$ functions mapping $\cal X$ to $\{0,1\}$.
+
+  \medskip
+
+  ERM selects the $h_i$ minimzing $\hat{\varepsilon}(h_i)$.
+
+  \medskip
+
+  What we can do:
+  \begin{itemize}
+  \item Show that $\hat{\varepsilon}(h)$ is a reliable estimate
+    of $\varepsilon(h)$ for all $h$.
+  \item Bound the generalization error of $\hat{h}$.
+  \end{itemize}
+  
+\end{frame}
+
+
+\begin{frame}{Bounds on generalization error for finite $\cal H$}{Uniform convergence}
+
+  Take a particular hypothesis $h_i \in \cal H$.
+
+  \medskip
+
+  Consider a Bernoulli random variable $Z$ whose distribution is
+  defined as follows:
+  \begin{itemize}
+  \item Sample $(\vec{x},y) \sim \cal D$.
+  \item Set $Z = \delta(h_i(\vec{x}) \ne y)$.
+  \end{itemize}
+
+  \medskip
+  
+  $Z$ indicates whether $h_i$ misclassifies $(\vec{x},y)$.
+
+  \medskip
+
+  Next, define $Z_j = \delta(h_i(\vec{x}^{(j)}) \ne y^{(j)})$.
+
+  \medskip
+
+  Since the training set $S$ was drawn i.i.d.\ from $\cal D$ and so
+  was $(\vec{x},y)$, we know that $Z$ and Z$_j$ have the same
+  distribution.
+  
+\end{frame}
+
+
+\begin{frame}{Bounds on generalization error for finite $\cal H$}{Uniform convergence}
+
+  The expected value of $Z$ is the probability of misclassification of
+  a randomly drawn example, which is $\varepsilon(h_i)$.
+
+  \medskip
+
+  As $Z$ and $Z_j$ have the same distribution, the expected value of $Z_j$
+  is also $\varepsilon(h_i)$.
+
+  \medskip
+
+  We can write the training error as
+  \[ \hat{\varepsilon}(h_i) = \frac{1}{m} \sum_{j=1}^m Z_j .\]
+  We have the mean $\hat{\epsilon}(h_i)$ of $m$ random variables $Z_j$,
+  all drawn i.i.d. from a Bernoulli distribution with mean
+  $\varepsilon(h_i)$.
+
+  \medskip
+
+  Now we can apply the Hoeffding inequality! We obtain
+  \[ P(|\varepsilon(h_i)-\hat{\varepsilon}(h_i)| > \gamma) \le 2 e^{-2\gamma^2m} .\]
+
+\end{frame}
+
+
+\begin{frame}{Bounds on generalization error for finite $\cal H$}{Uniform convergence}
+
+  What have we shown?
+
+  \medskip
+
+  For our $h_i$, \alert{training error will be close to generalization
+    error} with probability that increases with $m$.
+
+  \medskip
+
+  What about \alert{all possible $h_i$}?
+
+  \medskip
+
+  Well, let $A_i$ denote the event that $|\varepsilon(h_i)-\hat{\varepsilon}(h_i)| > \gamma$.
+
+  \medskip
+
+  For any $A_i$, we have $P(A_i) \le 2 e^{-2\gamma^2m}$.
+  
+\end{frame}
+
+
+\begin{frame}{Bounds on generalization error for finite $\cal H$}{Uniform convergence}
+
+  Now, we can use the union bound to bound generalization error for
+  \alert{any} $h_i$:
+  \begin{eqnarray*}
+    P(\exists h \in {\cal H}.|\varepsilon(h_i)-\hat{\varepsilon}(h_i)|>\gamma)
+    & = & P(A_1 \cup \cdots \cup A_k) \\
+    & \le & \sum_{i=1}^k P(A_i) \\
+    & \le & \sum_{i=1}^k 2 e^{-2\gamma^2m} \\
+    & = & 2 k e^{-2\gamma^2 m} .
+  \end{eqnarray*}
+  Subtracting both sides from 1, we obtain
+  \begin{eqnarray*}
+    P(\neg \exists h \in {\cal H}.|\varepsilon(h_i)-\hat{\varepsilon}(h_i)|
+    > \gamma) & = & P(\forall h\in {\cal H}.|\varepsilon(h_i) - \hat{\varepsilon}(h_i)| \le \gamma) \\
+    & \le & 1 - 2 k e^{-2\gamma^2 m} .
+  \end{eqnarray*}
+    
+\end{frame}
+
+
+\begin{frame}{Bounds on generalization error for finite $\cal H$}{Using uniform convergence}
+
+  The previous result is called the \alert{uniform convergence} result.
+
+  \medskip
+
+  The bound holds simultaneously for all $h \in {\cal H}$.
+
+  \medskip
+
+  We can use this, for example, to answer the question, ``Given
+  $\gamma$ and some $\delta>0$, find $m$ large enough to guarantee
+  that with probability at least $1-\delta$, training error will be
+  within $\gamma$ of generalization error.''
+
+  \medskip
+
+  To do it, let $\delta = 2k e^{-2\gamma^2 m}$ and solve for $m$ to find that
+  we should use
+  \[ m \ge \frac{1}{2\gamma^2}\log\frac{2k}{\delta} .\]
+
+  Now we know \alert{how many training examples are needed to make a
+    guarantee about generalization error}. Note that $m$ increases in
+  the \alert{logarithm of $k$}!!
+
+  \medskip
+
+  The training set size $m$ needed to achieve a level of performance
+  is called the algorithm's \alert{sample complexity}.
+  
+\end{frame}
+
+
+\begin{frame}{Bounds on generalization error for finite $\cal H$}{Using uniform convergence}
+
+  We can also hold $m$ and $\delta$ fixed and solve for $\gamma$:
+  \[ |\hat{\varepsilon}(h) - \varepsilon(h)| \le \sqrt{\frac{1}{2m}\log\frac{2k}{\delta}} .\]
+
+  \medskip
+
+  [Think about how you could use this fact...]
+
+\end{frame}
+
+
+\begin{frame}{Bounds on generalization error for finite $\cal H$}{The bound}
+
+  Now to prove something about the generalization error
+  obtained by picking
+  \[ \hat{h} = \argmin_{h\in \cal H} \hat{\varepsilon}(h) .\]
+  We have $|\varepsilon(h)-\hat{\varepsilon}(h)| \le \gamma$ for all
+  $h \in \cal H$.
+
+  \medskip
+
+  Let $h^* = \argmin_{h \in \cal H} \varepsilon(h)$ be the best possible
+  hypothesis in $\cal H$.
+
+  \medskip
+
+  Applying uniform convergence (twice) and the fact that
+  $\hat{h} = \argmin_{h \in H}\hat{\varepsilon}(h)$, we can obtain
+  \begin{eqnarray*}
+    \varepsilon(\hat{h}) & \le & \hat{\varepsilon}(\hat{h}) + \gamma \\
+    & \le & \hat{\varepsilon}(h^*) + \gamma \\
+    & \le & \varepsilon(h^*)+2\gamma
+  \end{eqnarray*}
+
+  \medskip
+
+  \alert{The test error of the minimum risk classifier is at most
+  $2\gamma$ worse than the best possible classifier!}
+  
+\end{frame}
+
+
+\begin{frame}{Bounds on generalization error for finite $\cal H$}{Bounded generalization error}
+
+  \textbf{Theorem}. Let $|{\cal H}| = k$, and let any $m, \delta$ be
+  fixed. Then with probability at least $1-\delta$, we have that
+  \[ \varepsilon(\hat{h}) \le \left( \min_{h\in \cal H} \varepsilon(h) \right)
+  + 2 \sqrt{\frac{1}{2m}\log\frac{2k}{\delta}} .\]
+
+  \medskip
+
+  Prove this by letting $\gamma = \sqrt{\cdot}$ and apply the previous
+  argument.
+  
+\end{frame}
+
+
+\begin{frame}{Bounds on generalization error for finite $\cal H$}{The bound's implications for bias and variance}
+
+  We have not formally defined bias and variance for a classifier, but
+  the first term in the bound is a rough bias for $\hat{h}$, and the
+  second term is a rough variance.
+
+  \medskip
+  
+  Suppose we have a hypothesis class $\cal H$.
+
+  \medskip
+
+  If we consider a larger hypothesis class
+  ${\cal H}' \supseteq \cal H$:
+  \begin{itemize}
+    \item We will improve our bias
+      ($\min_{h \in \cal H}\varepsilon(h)$ can only get smaller),
+    \item We will increase $k$, thus increasing the variance.
+  \end{itemize}
+  
+\end{frame}
+
+
+\begin{frame}{Bounds on generalization error for finite $\cal H$}{Bounded sample complexity}
+
+  If we hold $\gamma$ and $\delta$ fixed, obtain a bound on sample
+  complexity.
+
+  \medskip
+  
+  \textbf{Corollary}. Let $|{\cal H}| = k$, and let any
+  $\delta,\gamma$ be fixed. Then for $\varepsilon(\hat{h}) \le \min_{h
+    \in \cal H} \varepsilon(h) + 2 \gamma$ to hold with probability
+  at least $1-\delta$, it suffices that
+  \begin{eqnarray*}
+    m & \ge & \frac{1}{2\gamma^2}\log\frac{2k}{\delta} \\
+    & = & O\left(\frac{1}{\gamma^2}\log\frac{k}{\delta}\right) .
+  \end{eqnarray*}
+  
+\end{frame}
+
+%======================================================================
+\section{Bounds on generalization error for infinite $\cal H$}
+%======================================================================
+
+\begin{frame}{Bounds on generalization error for infinite $\cal H$}{Motivation}
+
+  We've seen some interesting results for $|{\cal H}| = k$.
+
+  \medskip
+
+  But most of the models we've looked at in this class have
+  $|{\cal H}| = \infty$.
+
+  \medskip
+
+  What can we do??
+
+\end{frame}
+
+
+\begin{frame}{Bounds on generalization error for infinite $\cal H$}{A not-so-good approach}
+
+  To begin with, imagine our parameter vector $\vec{\theta}$ consists
+  of $d$ real numbers represented as double-precision (64 bit) IEEE
+  floating point numbers.
+
+  \medskip
+
+  Our hypothesis class thus consists of at most $k = 2^{64d}$ hypotheses.
+
+  \medskip
+
+  To guarantee $\varepsilon(\hat{h}) \le \varepsilon(h^*)+2\gamma$ to
+  hold with probability at least $1-\delta$ we need
+  \[ m \ge O\left(\frac{1}{\gamma^2}\log\frac{2^{64d}}{\delta}\right) =
+  O\left(\frac{d}{\gamma^2}\log\frac{1}{\delta}\right) =
+  O_{\gamma,\delta}(d) .\]
+
+  \medskip
+
+  So the number of training examples is \alert{linear in the number of
+    parameters in the model} if we use finite floating point
+  representations of real numbers and manage to implement ERM over
+  this space.
+
+\end{frame}
+
+
+\begin{frame}{Bounds on generalization error for infinite $\cal H$}{A better approach}
+
+  The approach based on finite floating point approximations of
+  $\vec{\theta} \in \Rset^d$ depends on the \alert{parameterization of
+    the hypothesis}.
+
+  \medskip
+
+  There is a better approach based on the \alert{characteristics
+    feature space}.
+
+  \medskip
+
+  \textbf{Definition}: Given a set $S = \{
+  \vec{x}^{(1)},\ldots,\vec{x}^{(d)} \}$ of points $\vec{x}^{(i)} \in
+  \cal X$, we say that $\cal H$ \alert{shatters} $S$ if $\cal H$ can
+  realize \alert{any labeling on $S$}.
+
+  \medskip
+
+  \textbf{Definition}: Given a hypothesis class $\cal H$, we define
+  the \alert{Vapnick-Chervonenkis dimension} VC($\cal H$) as the largest
+  set that is shattered by $\cal H$.
+  
+\end{frame}
+
+
+\begin{frame}{Bounds on generalization error for infinite $\cal H$}{VC dimension}
+
+  What is the VC dimension of a linear classifier in $\Rset^2$?
+
+  \medskip
+  
+  \myfig{1.5in}{shatter-points}{Ng (2017), CS229 lecture notes.}
+
+  \medskip
+
+  Can these three points be shattered?
+  
+\end{frame}
+
+
+\begin{frame}{Bounds on generalization error for infinite $\cal H$}{VC dimension}
+
+  The answer is yes:
+
+  \medskip
+  
+  \myfig{4.5in}{shattering}{Ng (2017), CS229 lecture notes.}
+
+\end{frame}
+
+
+\begin{frame}{Bounds on generalization error for infinite $\cal H$}{VC dimension}
+
+  Note that for VC dimension to be $d$, we have to be able to shatter
+  \alert{some} point set of size $d$, \alert{not all} point sets:
+
+  \medskip
+ 
+  \myfig{3in}{unshatterable-points}{Ng (2017), CS229 lecture notes.}
+  
+\end{frame}
+
+
+\begin{frame}{Bounds on generalization error for infinite $\cal H$}{Bounded generalization error}
+
+  \textbf{Theorem} (Vapnik). Let $\cal H$ be given, and let $d =
+  \text{VC}({\cal H})$. Then with probability at least $1-\delta$, we
+  have that for all $h \in \cal H$,
+  \[ |\varepsilon(h)-\hat{\varepsilon}(h)| \le O\left( \sqrt{\frac{d}{m}\log\frac{m}{d}+\frac{1}{m}\log\frac{1}{\delta}} \right) .\]
+  This also means
+  \[ \varepsilon(\hat{h}) \le \varepsilon(h^*) + O\left( \sqrt{\frac{d}{m}\log\frac{m}{d}+\frac{1}{m}\log\frac{1}{\delta}} \right) .\]
+
+  We have uniform convergence in $m$ so long as $d$ is finite.
+
+  \medskip
+
+  This is considered by many \alert{the most important theorem} in
+  learning theory!
+  
+\end{frame}
+
+
+\begin{frame}{Bounds on generalization error for infinite $\cal H$}{Bounded sample complexity}
+
+  \textbf{Corollary}. For $|\varepsilon(h)-\hat{\varepsilon}(h) \le
+  \gamma$ to hold for all $h \in \cal H$, so that
+  $\varepsilon(\hat{h}) \le \varepsilon(h^*) + 2\gamma)$ with
+  probability at least $1-\delta$, it suffices that $m =
+  O_{\gamma,\delta}(d)$.
+
+  \medskip
+
+  The number of training examples needed to learn ``well'' using $\cal
+  H$ is linear in the VC dimension of $\cal H$.
+
+  \medskip
+
+  For most hypothesis classes, VC dimension is roughly linear in the
+  number of parameters.
+
+  \medskip
+
+  This means that for most classifiers, the number of training examples
+  needed is usually roughly linear in the number of parameters of $\cal H$.
+
+\end{frame}
+
+%======================================================================
+\section{Conclusion on generalization bounds}
+%======================================================================
+
+\begin{frame}{Conclusion on generalization bounds}
+
+  Now we've seen the most important results in learning theory.
+
+  \medskip
+
+  Generally, the story is encouraging: \alert{we can achieve near
+    perfection} for most models just by \alert{gathering sufficient
+    data}.
+
+  \medskip
+
+  But the devil is in the details. For example:
+  \begin{itemize}
+  \item SVMs with finite $\phi(\vec{x})$ have finite VC dimension, but
+    if $\phi(\vec{x})$ maps $\vec{x}$ to an infinite dimensional space (like
+    the RBF kernel does) then the VC dimension is \alert{infinite}.
+  \item We find that the $m$ needed to achieve a particular level of
+    generalization error is linear in $\text{VC}({\cal H})$. But what
+    is the constant of proportionality? (Getting data has a cost, and
+    a factor of 100 would be a lot bigger than 10!)
+  \item CNNs with millions of parameters can be trained effectively
+    with thousands of examples. How is it possible? Are deep learning
+    models cheating Vapnik somehow?
+  \end{itemize}
+
+\end{frame}
+
+
+\begin{frame}{Conclusion on generalization bounds}
+
+  Deep learning is particularly interesting here.
+
+  \medskip
+
+  Neural network architectures' VC dimension is $O(|\mat{W}|)$ in the best
+  case.
+
+  \medskip
+
+  So a model with millions of parameters needs millions of training
+  examples to \alert{guarantee} good generalization according to
+  Vapnik.
+
+  \medskip
+
+  However, note that Vapnik's theorem is a theorem of
+  \alert{sufficiency}, not necessity. Techniques we have studied help
+  us cheat Vapnik:
+  \begin{itemize}
+  \item Stopping training when validation set cost is minimal
+  \item Weight decay and dropout (regularization)
+  \end{itemize}
+
+  \medskip
+
+  There is a really interesting take from astrophysicists' perspective
+  by Lin, Tegmark, and Roland (2016) at
+  \url{https://arxiv.org/abs/1608.08225} that provides a interesting
+  theory of how deeper models may better due to the hierarchical
+  structure of real world generative processes.
+
+  \medskip
+  
+  These are topics needing more research!
+  
+\end{frame}
+
+%======================================================================
+\section{Model selection}
+%======================================================================
+
+\begin{frame}{Model selection}{Finding the best model}
+
+  OK, so now we understand that for a hard problem, the ``right''
+  model, the one that is guaranteed to generalize to the test set,
+  might be \alert{too biased}.
+
+  \medskip
+
+  We also understand that a less biased model may have VC dimension
+  too high for the number of examples we have and will thus be
+  \alert{prone to overfitting} (too much variance).
+
+  \medskip
+  
+  How can we find the ``best'' model? For example,
+  \begin{itemize}
+  \item In polynomial regression $h_{\vec{\theta}}(x) = g(\theta_0 + \theta_1 x
+    + \theta_2 x^2 + \cdots + \theta_k x^k)$, how to decide the right $k$?
+  \item In locally-weighted regression, how to choose the bandwidth
+    parameter $\tau$?
+  \item With SVMs, how to choose $C$ (and $\gamma$ for the RBF
+    kernel)?
+  \end{itemize}
+
+\end{frame}
+
+
+\begin{frame}{Model selection}{Cross validation}
+
+  In each of these cases, we have a set of models ${\cal M} = \{ M_1,
+  \ldots, M_d\}$ we would like to select from.
+
+  \medskip
+
+  From ERM we might train each $M_i$ and pick the $M_i$ with the lowest
+  training error.
+
+  \medskip
+
+  But this will give us a high-variance model that doesn't test well.
+
+  \medskip
+
+  Our main alternative (using a validation set) is called \alert{cross
+    validation}:
+  \begin{itemize}
+  \item Split the training set $S$ into $S_{train}$ and $S_{validation}$ using
+    a ratio such as 70\% to 30\% or 80\% to 20\%.
+  \item Train each model $M_i$ on $S_{train}$.
+  \item Select the $M_i$ with lowest error on $S_{validation}$.
+  \item (Optional) Re-train $M_i$ on all of $S$.
+  \item Use $M_i$.
+  \end{itemize}
+  
+\end{frame}
+
+
+\begin{frame}{Model selection}{$k$-fold cross validation}
+
+  When data is scarse, we'd prefer to select the model that is best on
+  \alert{all} the data, not just 30\% of the data!
+
+  \medskip
+
+  Then \alert{$k$-fold cross validation} makes more sense:
+  \begin{enumerate}
+  \item Split $S$ into $k$ disjoint subsets $S_1,\ldots,S_k$.
+  \item For each $M_i$
+    \begin{itemize}
+    \item For $j = 1, \ldots, k$
+      \begin{enumerate}
+      \item Train $M_i$ on $S_{train} = S_1,\ldots,S_{j-1},S_{j+1},\ldots,S_k$
+      \item Test the trained $M_i$ on $S_{validation} = S_j$
+      \end{enumerate}
+    \end{itemize}
+    \item Select the $M_i$ with the lowest average error on
+      $S_{validation}$ over the $k$ folds.
+    \item Retrain $M_i$ on all of $S$.
+  \end{enumerate}
+
+  \medskip
+
+  Typical values of $k$ are 5, 10, and $m$ (\alert{leave-one-out cross
+    validation}).
+
+\end{frame}
+
+
+\begin{frame}{Model selection}{$k$-fold cross validation}
+
+  Be careful about \alert{how you split}!
+  \begin{itemize}
+  \item Usually, the partitioning of examples into $k$ folds is random
+    uniform.
+  \item However, sometimes training items are related to each other
+    (e.g.\ multiple crops of the same object in the same image).
+  \item Randomized partitioning will put some related examples in
+    different folds, leading to overestimated performance.
+  \item In this case, it's necessary to ensure that the related
+    examples are \alert{in the same fold}.
+  \end{itemize}  
+  
+\end{frame}
+
+
+\begin{frame}{Model selection}{Feature selection}
+
+  A special case of model selection is \alert{feature selection}.
+
+  \medskip
+
+  Suppose you have many features, possibly even $n \gg
+  m$.\footnote{This is possible in some domains such as biological
+    sequence analysis, where we might want to find segments of DNA
+    sequences in a particular genome that code for a particular
+    biological function, or to a lesser extent in text
+    classification.}
+
+  \medskip
+
+  We know that the VC dimension of a classifier with very large $n$
+  will be too high.
+
+  \medskip
+
+  So we treat the problem as model selection: among the $2^n$ possible
+  subsets of features, \alert{find the subset that gives the best cross
+  validation performance}.
+
+  \medskip
+
+  Trying all $2^n$ subsets is impossible unless $n$ is very small. So
+  we need a more efficient approach.
+  
+\end{frame}
+
+
+\begin{frame}{Model selection}{Forward feature selection}
+
+  The \alert{forward search} method of feature selection:
+  \begin{enumerate}
+  \item Initialize ${\cal F} = \emptyset$.
+  \item For $j \in \{ 1, \dots, n \}$
+    \begin{enumerate}
+    \item For $i \in \{ 1, \ldots, n \} - {\cal F}$
+      \begin{enumerate}
+      \item Let ${\cal F}_i = {\cal F} \cup \{ i \}$
+      \item Train on ${\cal F}_i$ with cross validation and obtain the
+        cross validation error
+      \end{enumerate}
+    \item Let ${\cal F} = {\cal F} \cup \{ i \}$, where $i$ is the
+      feature that gave the lowest cross validation error.
+    \end{enumerate}
+    \item Select the feature set that gave the lowest cross validation error
+    over all tests.
+  \end{enumerate}
+
+\end{frame}
+
+
+\begin{frame}{Model selection}{Other wrapper methods}
+
+  When we have a method that \alert{wraps} our learning algorithm,
+  supplying a different feature set on each iteration, this is called
+  \alert{wrapper model selection}.
+
+  \medskip
+
+  Another wrapper method is \alert{backward search}, in which we start
+  with ${\cal F} = \{ 1, \ldots, n \}$ and \alert{iteratively remove
+    the least informative feature}.
+
+  \medskip
+
+  Wrapper methods work well but take a lot of time, for example,
+  $O(kn^2)$ calls to the optimization algorithm for forward selection
+  with $k$-fold cross validation.
+  
+\end{frame}
+
+
+\begin{frame}{Model selection}{Filter feature selection}
+
+  \alert{Filter feature selection} methods use a heuristic to decide
+  which subsets of features to try.
+  
+  \medskip
+
+  Example: we may \alert{rank} features according to some measure of
+  relatedness to the desired output, then incrementally add features
+  in that order if they improve generalization.
+
+  \medskip
+  
+  Most common measure of relatedness for discrete features:
+  \alert{mutual information} $MI(X_i,Y)$ between feature $X_i$ and
+  target $Y$:
+  \[ MI(X_i,Y) = \sum_{x_i\in X_i} \sum_{y\in Y} p(x_i,y)\log\frac{p(x_i,y)}{p(x_i)p(y)} \]
+  [Think about the value of $MI(X_i,Y)$ if $X_i$ and $Y$ are
+    independent or identical and why that would be a good indication
+    of relatedness.]
+
+\end{frame}
+
+%======================================================================
+\section{Regularization}
+%======================================================================
+
+\begin{frame}{Regularization}{Frequentist vs.\ Bayesian statistics}
+
+  We've seen several specific techniques for \alert{regularization}
+  with different models so far.
+
+  \medskip
+
+  Here we'll discuss the general framework of Bayesian statistics and
+  how the Bayesian perspective on parameter estimation can be used for
+  regularization.
+
+  \medskip
+
+  The \alert{frequentist} perspective in statistics is that our
+  parameter vector $\vec{\theta}$ is \alert{constant but unknown}.
+
+  \medskip
+
+  Maximum likelihood is a general technique to identify such a
+  constant but unknown parameter.
+
+  \medskip
+
+  The \alert{Bayesian} perspective in statistics is that
+  $\vec{\theta}$ is itself a \alert{random variable} whose value is
+  unknown.
+  
+\end{frame}
+
+
+\begin{frame}{Regularization}{Bayesian estimation}
+
+  The frequentist approach of maximum likelihood says that given $S =
+  \{ (\vec{x}^{(i)},y^{(i)})\}_{i=1..m}$, we should find
+  \[ \vec{\theta}_{ML} = \argmax_{\vec{\theta}} \prod_{i=1}^m p(y^{(i)} \mid \vec{x}^{(i)}; \vec{\theta}) .\]
+  The Bayesian approach says we should consider the \alert{posterior distribution over the parameters}
+  \begin{eqnarray*}
+    p(\vec{\theta} \mid S) & = & \frac{p(S \mid \vec{\theta}) p(\vec{\theta})}{p(S)} \\
+    & = & \frac{\left(\prod_{i=1}^m p(y^{(i)}\mid \vec{x}^{(i)}, \vec{\theta})\right) p(\vec{\theta})}{\int_{\vec{\theta}}\left( \prod_{i=1}^m p(y^{(i)}\mid \vec{x}^{(i)},\vec{\theta}) p(\vec{\theta})\right) d\vec{\theta}}
+  \end{eqnarray*}
+  when making a decision.
+
+\end{frame}
+
+
+\begin{frame}{Regularization}{Fully Bayesian prediction}
+
+  Both probabilities $p(y^{(i)}\mid \vec{x}^{(i)}; \vec{\theta})$
+  (frequentist) and $p(y^{(i)}\mid \vec{x}^{(i)}, \vec{\theta})$
+  (Bayesian) are given by the model.
+
+  \medskip
+
+  For logistic regression, for example, we would use
+  $h_{\vec{\theta}}(\vec{x}^{(i)})^{y^{(i)}}(1-h_{\vec{\theta}}(\vec{x}^{(i)}))^{1-y^{(i)}}$ with
+  $h_{\vec{\theta}}(\vec{x}^{(i)}) = \frac{1}{1+e^{\vec{\theta}^{\top} \vec{x}^{(i)}}}$.
+
+  \medskip
+
+  Decision making would treat $\vec{\theta}$ as random:
+  \[ p(y \mid \vec{x}, S) = \int_{\vec{\theta}} p(y \mid \vec{x},\vec{\theta})
+  p(\vec{\theta} \mid S) d\vec{\theta} \]
+  [How did we get that??]
+
+  \medskip
+
+  Then our answer might be the expected value of $y$ given $\vec{x}$:
+  \[ \Expec[y \mid \vec{x},S] = \int_y y p(y \mid \vec{x},S) dy \]
+
+\end{frame}
+
+
+\begin{frame}{Regularization}{MAP prediction}
+
+  Usually, the full Bayesian predictor on the previous slide is too
+  hard to compute in practice.
+
+  \medskip
+
+  Instead, we can go with a single point estimate for $\vec{\theta}$,
+  leading to the \alert{maximum a posteriori} (MAP) estimate of
+  $\vec{\theta}$:
+  \[ \vec{\theta}_{MAP} = \argmax_{\vec{\theta}} \prod_{i=1}^m p(y^{(i)} \mid \vec{x}^{(i)},\vec{\theta}) p(\vec{\theta}) . \]
+  Note that this is the same as the ML estimate except for the
+  \alert{prior term} $p(\vec{\theta})$.  One possible prior is
+  $\vec{\theta} \sim {\cal N}(\vec{0},\tau^2 \mat{I})$.
+
+  \medskip
+
+  This will assign higher scores to models with smaller parameter
+  vectors, reducing the model's variance.
+
+  \medskip
+
+  \alert{Bayesian logistic regression} works well for many problems
+  such as text classification where $n \gg m$.
+  
+\end{frame}
+
+\end{document}
+
