@@ -1,0 +1,652 @@
+\documentclass{beamer}
+
+\mode<presentation>
+{
+  \setbeamertemplate{background canvas}[square]
+  \pgfdeclareimage[width=6em,interpolate=true]{dsailogo}{../dsai-logo}
+  \pgfdeclareimage[width=6em,interpolate=true]{erasmuslogo}{../erasmus-logo}
+  \titlegraphic{\pgfuseimage{dsailogo} \hspace{0.2in} \pgfuseimage{erasmuslogo}}
+  %\usetheme{default}
+  \usetheme{Madrid}
+  \usecolortheme{rose}
+  \usefonttheme[onlysmall]{structurebold}
+}
+
+\usepackage{pgf,pgfarrows,pgfnodes,pgfautomata,pgfheaps,pgfshade}
+\usepackage{amsmath,amssymb}
+\usepackage{graphics}
+\usepackage{ragged2e}
+\usepackage{array}
+\usepackage[latin1]{inputenc}
+\usepackage{colortbl}
+\usepackage[absolute,overlay]{textpos}
+\setlength{\TPHorizModule}{30mm}
+\setlength{\TPVertModule}{\TPHorizModule}
+\textblockorigin{10mm}{10mm}
+\usepackage[english]{babel}
+\usepackage{listings}
+\setbeamercovered{dynamic}
+
+\AtBeginSection[]{
+  \begin{frame}<beamer>
+  \frametitle{Outline}
+  \tableofcontents[currentsection]
+  \end{frame}
+}
+
+\title[Machine Learning]{Machine Learning\\Unsupervised Learning}
+\author{dsai.asia}
+\institute[]{
+  Asian Data Science and Artificial Intelligence Master's Program}
+\date{}
+
+% My math definitions
+
+\renewcommand{\vec}[1]{\boldsymbol{#1}}
+\newcommand{\mat}[1]{\mathtt{#1}}
+\newcommand{\ten}[1]{\mathcal{#1}}
+\newcommand{\crossmat}[1]{\begin{bmatrix} #1 \end{bmatrix}_{\times}}
+\renewcommand{\null}[1]{{\cal N}(#1)}
+\newcommand{\class}[1]{{\cal C}_{#1}}
+\def\Rset{\mathbb{R}}
+\def\Expec{\mathbb{E}}
+\def\Pset{\mathbb{P}}
+\DeclareMathOperator*{\argmax}{argmax}
+\DeclareMathOperator*{\argmin}{argmin}
+\DeclareMathOperator*{\sign}{sign}
+\DeclareMathOperator*{\cov}{Cov}
+\DeclareMathOperator*{\diag}{diag}
+\DeclareMathOperator*{\var}{Var}
+\def\norm{\mbox{$\cal{N}$}}
+
+\newcommand{\stereotype}[1]{\guillemotleft{{#1}}\guillemotright}
+
+\newcommand{\myfig}[3]{\centerline{\includegraphics[width={#1}]{{#2}}}
+    \centerline{\scriptsize #3}}
+
+\begin{document}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%             CONTENTS START HERE
+
+%\setbeamertemplate{navigation symbols}{}
+
+\frame{\titlepage}
+
+%--------------------------------------------------------------------
+%\part<presentation>{Part name}
+%
+%\frame{\partpage}
+
+\begin{frame}
+\frametitle{Readings}
+
+Readings for these lecture notes:
+\begin{itemize}
+\item[-] Bishop, C. (2006), \textit{Pattern Recognition and Machine Learning},
+  Springer, Chapter 9.
+\item[-] Hastie, T., Tibshirani, R., and Friedman, J. (2016),
+  \textit{Elements of Statistical Learning: Data Mining, Inference, and
+    Prediction}, Springer, Chapters 13, 14.
+\item[-] Ng, A. (2017), \textit{Learning Theory}.
+  Lecture note set 7 for CS229, Stanford University.
+\end{itemize}
+
+These notes contain material $\copyright$ Bishop (2006), Hastie et
+al.\ (2016), and Ng (2017).
+
+\end{frame}
+
+%======================================================================
+\section{Introduction}
+%======================================================================
+
+\begin{frame}{Introduction}
+
+  Now we consider the problem of \alert{unsupervised learning} in which,
+  rather than trying to predict some target given $\vec{x}$, we want to
+  understand the relationship of $\vec{x}$ to the examples in our
+  unlabeled training set.
+
+  \medskip
+
+  We begin with $k$-means clustering then move to other models.
+  
+\end{frame}
+
+%======================================================================
+\section{$k$-means}
+%======================================================================
+
+\begin{frame}{$k$-means}{The algorithm}
+
+  In a \alert{clustering} problem, we are given a training set
+  $S = \{ \vec{x}^{(1)}, \ldots, \vec{x}^{(m)} \}$, $\vec{x}^{(i)} \in \Rset^n$
+  and we want to
+  group the $\vec{x}^{(i)}$ into cohesive clusters.
+
+  \medskip
+
+  The \alert{$k$-means} clustering algorithm is as follows:
+  \begin{enumerate}
+  \item Randomly initialize $k$ \alert{cluster centroids} $\vec{\mu}_1,\ldots,\vec{\mu}_k \in \Rset^n$.
+  \item Repeat until convergence:
+    \begin{enumerate}
+    \item For $i \in 1..m, c^{(i)} \leftarrow \argmin_j \| \vec{x}^{(i)} - \vec{\mu}_j \|^2$.
+    \item For $j \in 1..k$,
+      \[ \vec{\mu}_j \leftarrow \frac{\sum_{i=1}^m \delta(c^{(i)}=j)\vec{x}^{(i)}}{\sum_{i=1}^m \delta(c^{(i)}=j)}. \]
+    \end{enumerate}
+    
+  \end{enumerate}
+    
+\end{frame}
+
+
+\begin{frame}{$k$-means}{Example}
+
+  \myfig{3.2in}{kmeans}{Ng (2017), CS229 lecture notes}
+
+  \medskip
+
+  (a) Training data. (b) Initial mean assignment.
+  (c) Iteration 1 cluster assignment. (d) Iteration 1 mean computation.
+  (e) Iteration 2 cluster assignment. (f) Iteration 2 mean computation.
+
+\end{frame}
+
+
+\begin{frame}{$k$-means}{Exercise}
+
+  As an exercise, generate data from three Gaussians with different
+  means and covariances and produce an animation of $k$-means in
+  action.
+
+\end{frame}
+
+
+\begin{frame}{$k$-means}{Convergence}
+
+  $k$-means is equivalent to \alert{coordinate descent} on $\vec{c}$ and
+  the $\vec{\mu}_i$'s for cost function or \alert{distortion function}
+  \[ J(\vec{c},\mat{\Theta}) = \sum_{i=1}^m \| \vec{x}^{(i)} - \vec{\mu}_{c^{(i)}} \|^2 \]
+  with
+  \[ \mat{\Theta} = \begin{bmatrix} \vec{\mu}_1 & \cdots & \vec{\mu}_k \end{bmatrix}. \]
+ 
+  \medskip
+
+  Prove this by finding the minimum with respect to $\vec{c}$ holding
+  the $\vec{\mu}_i$ fixed then finding the minimum with respect to the
+  $\vec{\mu}_i$ holding the $\vec{c}$ fixed.
+
+  \medskip
+
+  The method is thus guaranteed to converge in the sense that on every
+  iteration, $J$ will monotonically decrease.
+
+  \medskip
+
+  As $J$ is not convex, $k$-means is not guaranteed to converge to a
+  global minimum. Local minima are possible.
+  
+\end{frame}
+
+%======================================================================
+\section{EM for Gaussian mixture models}
+%======================================================================
+
+\begin{frame}{EM for Gaussian mixture models}{Setting}
+
+  Similar to the $k$-means setting, suppose we are given a training set
+  $S=\{\vec{x}^{(1)},\ldots,\vec{x}^{(m)}\}$ without labels.
+
+  \medskip
+
+  Rather than simply find cluster centers, however, now our goal is to
+  estimate a joint distribution $p(\vec{x}^{(i)},z^{(i)}) =
+  p(\vec{x}^{(i)}\mid z^{(i)})p(z^{(i)})$.
+
+  \medskip
+
+  The \alert{latent} (hidden) variable $z^{(i)}$ indicates
+  \alert{which of $k$ clusters or components} the example
+  $\vec{x}^{(i)}$ was drawn from.
+  
+  \medskip
+
+  Assumptions:
+  \begin{itemize}
+  \item $z^{(i)} \sim \text{Multinomial}(\vec{\phi})$ with $\phi_j
+    \ge 0$ and $\sum_{j=1}^k \phi_j = 1$.
+  \item $\vec{x}^{(i)} \mid (z^{(i)} = j) \sim {\cal N}(\vec{\mu}_j,\mat{\Sigma}_j)$.
+  \end{itemize}
+    
+\end{frame}
+
+
+\begin{frame}{EM for Gaussian mixture models}{Likelihood}
+
+  As usual, we try to estimate the parameters
+  $\vec{\phi},\vec{\mu}_1,\ldots,\mat{\Sigma}_1,\ldots$ via maximum
+  likelihood, first by writing down the (log) likelihood function:
+  \begin{eqnarray*}
+    \ell(\vec{\phi},\vec{\mu}_1,\ldots,\mat{\Sigma}_1,\ldots)
+     & = & \sum_{i=1}^m \log p(\vec{x}^{(i)}; \vec{\phi},\vec{\mu}_1,\ldots,\mat{\Sigma}_1,\ldots) \\
+    & = & \sum_{i=1}^m \log \sum_{j=1}^k p(\vec{x}^{(i)} \mid z^{(i)}=j ;
+    \vec{\mu}_j,\mat{\Sigma}_j)p(z^{(i)}=j ; \vec{\phi}) \\
+    & = & \sum_{i=1}^m \log \sum_{j=1}^k \phi_j {\cal N}(\vec{x}^{(i)} ; \vec{\mu}_j,
+    \mat{\Sigma}_j)
+  \end{eqnarray*}
+
+  There is no closed form solution to this maximization
+  problem unfortunately...
+
+\end{frame}
+
+
+\begin{frame}{EM for Gaussian mixture models}{Maximization}
+
+  But, what if we knew the $z^{(i)}$'s? Could we find the maximimum
+  likelihood solution for the $\vec{\mu}$'s and $\Sigma$'s?
+
+  \medskip
+
+  The answer is yes...
+  \begin{eqnarray*}
+  \ell(\vec{\phi},\vec{\mu}_1,\ldots,\mat{\Sigma}_1,\ldots)
+  & = & \sum_{i=1}^m \left[ \log p(\vec{x}^{(i)} \mid \vec{z}^{(i)} ; \vec{\mu}_{z^{(i)}},\mat{\Sigma}_{z^{(i)}}) + \log p(z^{(i)} ; \vec{\phi}) \right] \\
+  & = & \sum_{i=1}^m \left[ \log \phi_{z^{(i)}} + \log {\cal N}(\vec{x}^{(i)} ; \vec{\mu}_{z^{(i)}},\mat{\Sigma}_{z^{(i)}}) \right]
+  \end{eqnarray*}
+
+  Take the derivatives with respect to each parameter, set them to 0,
+  and solve for the parameters. What do you get?
+  
+\end{frame}
+
+
+\begin{frame}{EM for Gaussian mixture models}{Maximization with respect to $\phi_j$}
+
+  If we set up the equation
+  $\frac{\partial \ell}{\partial \phi_j} = 0$,
+  we get close to a solution as $\phi_j \rightarrow \infty$.
+
+  \medskip
+
+  This violates the constraint $\sum_{j=1}^k \phi_j = 1$.
+
+  \medskip
+
+  Try instead, then, to introduce a Lagrange multiplier for the
+  constraint and find a stationary point of
+  \[ \ell(\vec{\phi},\vec{\mu}_1,\ldots,\mat{\Sigma}_1,\ldots) + \lambda
+  \left( \sum_{j=1}^k \phi_k - 1 \right). \]
+  Maximizing this with the
+  full likelihood expression, you should be able to obtain
+  \[ \sum_{i=1}^m \frac{{\cal N}(\vec{x}^{(i)};\vec{\mu}_{z^{(i)}},\mat{\Sigma}_{z^{(i)}})}{\sum_{l=1}^k \phi_l {\cal N}(\vec{x}^{(i)};\vec{\mu}_{z^{(i)}},\mat{\Sigma}_{z^{(i)}})} + \lambda = 0. \]
+  
+\end{frame}
+
+
+\begin{frame}{EM for Gaussian mixture models}{Maximization with respect to $\phi_j$}
+
+  Here's bit of a magic trick: try multiplying both sides of the
+  equation by $\phi_j$ then summing over $j$.
+
+  \medskip
+
+  Can you get $\lambda = -m$?
+
+  \medskip
+
+  Next, substitute $\lambda = -m$ and use the form of $\ell()$
+  assuming known $z^{(i)}$ and solve for $\phi_j$.
+  
+\end{frame}
+
+
+\begin{frame}{EM for Gaussian mixture models}{Maximization with respect to $\vec{\mu}_j$ and $\mat{\Sigma}_j$}
+
+  Setting up the equation
+  $\frac{\partial \ell}{\partial \vec{\mu}_j} = \vec{0}$
+  with the likelihood assuming known $z^{(i)}$, and using
+  Equation 81\footnote{$\frac{\partial \vec{x}^\top \mat{B} \vec{x}}{\partial \vec{x}} = (\mat{B}+\mat{B}^\top)\vec{x}$} from \textit{The Matrix Cookbook},
+  we get
+  \[ \sum_{i=1}^m \delta(z^{(i)}=j) \mat{\Sigma}^{-1}_j(\vec{x}^{(i)}-\vec{\mu}_j) = \vec{0}. \]
+
+  Doing the same with $\frac{\partial \ell}{\partial \mat{\Sigma}_j} =
+  \mat{0}$ and Equations 72\footnote{$\frac{\partial \vec{a}^\top
+      \mat{X} \vec{a}}{\partial \mat{X}} = \vec{a}\vec{a}^\top$} and
+  49\footnote{$\frac{\partial |\mat{X}|}{\partial \mat{X}} =
+    |\mat{X}|\mat{X}^{-T}$} from the \textit{Cookbook}, we get
+  \[ \sum_{i=1}^m \delta(z^{(i)} = j) \Sigma^{-1}_j \left((\vec{x}^{(i)}-\vec{\mu}_j)
+  (\vec{x}^{(i)}-\vec{\mu}_j)^\top - \Sigma_j\right) \Sigma^{-1}_j = \mat{0}.
+  \]
+  
+  
+
+\end{frame}
+
+
+\begin{frame}{EM for Gaussian mixture models}{Maximization}
+
+  Finally, we obtain
+  \begin{eqnarray*}
+    \phi_j & = & \frac{1}{m} \sum_{i=1}^m \delta(z^{(i)} = j), \\
+    \vec{\mu}_j & = & \frac{\sum_{i=1}^m \delta(z^{(i)} = j)\vec{x}^{(i)}}{
+      \sum_{i=1}^m\delta(z^{(i)} = j)}, \\
+    \mat{\Sigma}_j & = & \frac{\sum_{i=1}^m \delta(z^{(i)}=j)(\vec{x}^{(i)}-\vec{\mu}_j)
+      (\vec{x}^{(i)}-\vec{\mu}_j)^\top}{\sum_{i=1}^m \delta(z^{(i)}=j)} .
+  \end{eqnarray*}
+
+  If you look back, you'll see this is very similar to the Gaussian
+  discriminant analysis model...
+  
+\end{frame}
+
+
+\begin{frame}{EM for Gaussian mixture models}{EM}
+
+  OK, that's great, but \alert{we don't know the $z^{(i)}$'s}!!
+
+  \medskip
+
+  To address this issue, we use the \alert{EM (Expectation Maximization) algorithm}.
+
+  \medskip
+  
+  EM is a general approach to solving maximum likelihood problems when there
+  are latent (unobserved/hidden) variables.
+
+  \medskip
+
+  In the E step, we try to \alert{guess values of the hidden
+    variables}, then in the M step, we \alert{update the parameters of
+    the model based on those guesses}.
+  
+\end{frame}
+
+
+\begin{frame}{EM for Gaussian mixture models}{EM}
+
+  Here's the EM algorithm, made specific for our Gaussian mixtures problem:
+  \begin{enumerate}
+  \item Repeat until convergence:
+    \begin{enumerate}
+    \item (E-step) For each $i \in 1..m, j \in 1..k$,
+      \[ w_j^{(i)} \leftarrow p(z^{(i)}=j \mid \vec{x}^{(i)};\vec{\phi},\vec{\mu}_1,\ldots,\mat{\Sigma}_1,\ldots) \]
+    \item (M-step) Update the parameters
+      \begin{eqnarray*}
+    \phi_j & \leftarrow & \frac{1}{m} \sum_{i=1}^m w_j^{(i)}, \\
+    \vec{\mu}_j & \leftarrow & \frac{\sum_{i=1}^m w_j^{(i)}\vec{x}^{(i)}}{
+      \sum_{i=1}^mw_j^{(i)}}, \\
+    \mat{\Sigma}_j & \leftarrow & \frac{\sum_{i=1}^m w_j^{(i)}(\vec{x}^{(i)}-\vec{\mu}_j)
+      (\vec{x}^{(i)}-\vec{\mu}_j)^\top}{\sum_{i=1}^m w_j^{(i)}}
+    \end{eqnarray*}
+    \end{enumerate}    
+  \end{enumerate}
+    
+\end{frame}
+
+
+\begin{frame}{EM for Gaussian mixture models}{More on the E step}
+
+  The $w_j^{(i)}$'s are our soft guesses as to the membership of each
+  example $\vec{x}^{(i)}$ in component $j$ of the mixture.
+
+  \medskip
+
+  How to calculate them? We have
+  \[ w_j^{(i)} \leftarrow p(z^{(i)}=j \mid \vec{x}^{(i)};\vec{\phi},\vec{\mu}_1,\ldots,\mat{\Sigma}_1,\ldots) .\]
+  Let's use Bayes rule to turn this into something we know how to calcluate:
+  \begin{align*}
+    p(z^{(i)}=j \mid \vec{x}^{(i)};\vec{\phi},\vec{\mu}_1,\ldots,& \mat{\Sigma}_1,\ldots)  = \\
+     &\frac{p(\vec{x}^{(i)} \mid z^{(i)} = j ; \vec{\mu}_j,\Sigma_j)
+    p(z^{(i)}=j ; \vec{\phi})}{\sum_{l=1}^k p(\vec{x}^{(i)} \mid z^{(i)} = l ; \vec{\mu}_l,\Sigma_l) p(z^{(i)}=l ; \vec{\phi})} .
+  \end{align*}
+
+\end{frame}
+
+
+\begin{frame}{EM for Gaussian mixture models}{More on the E step}
+
+  By the way, Bishop (2006) calls these $w^{(i)}_j$'s
+  \alert{responsibilities}, denoted $\gamma_{ij}$.
+
+  \medskip
+
+  $\gamma_{ij}$ is the degree to which example $i$ is compatible with
+  or could have been generated by Gaussian $j$.
+  
+\end{frame}
+
+
+\begin{frame}{EM for Gaussian mixture models}{Conclusion}
+
+  You should compare the Gaussian mixture model to $k$-means.
+
+  \medskip
+
+  Just like $k$-means, EM GMM is susceptible to \alert{local
+    minima}. We should perform several random restarts and retain the
+  best model.
+  
+  \medskip
+
+  \alert{Exercise}: implement the Gaussian mixture EM for a small dataset.
+
+  \medskip
+
+  As mentioned earlier, this is a specialization of the general EM
+  algorithm for estimating parameters when we have latent variables.
+
+  \medskip
+
+  Next we'll look at the general EM algorithm and its guarantees on
+  convergence.
+
+  \medskip
+
+  Then we'll look at different forms of unsupervised learning algorithms.
+
+\end{frame}
+
+\def\genem{0}
+\ifnum\genem=1
+
+%======================================================================
+\section{EM in general}
+%======================================================================
+
+\begin{frame}{EM in general}{Convex functions}
+
+  OK, now we discuss EM in general.
+
+  \medskip
+
+  First, we need to recall some facts about convex functions.
+
+  \begin{block}{Convex function}
+
+    For $f : \Rset \mapsto \Rset$, we say $f$ is \alert{convex} if
+    $\forall x \in \Rset, f''(x) \ge 0.$
+
+    For $f : \Rset^n \mapsto \Rset$, we say $f$ is convex if its
+    Hessian $\mat{H}_f \ge 0$ (the Hessian is positive semi-definite).
+
+    $f$ is \alert{strictly convex} if $\forall x, f''(x) > 0$ or
+    $\mat{H}_f > 0$ (the Hessian is positive definite).
+    
+  \end{block}
+
+\end{frame}
+
+
+\begin{frame}{EM in general}{Jensen's inequality}
+
+  \begin{block}{Jensen's inequality}
+
+    Let $f$ be a convex function, and let $X$ be a random variable.
+    Then:
+    \[ \Expec[f(X)] \ge f(\Expec[X]). \]
+    If $f$ is strictly convex, then $\Expec[f(X)] = f(\Expec[X])
+    \equiv X = \Expec[X]$ with probability 1 ($X$ is constant).
+
+  \end{block}
+  
+\end{frame}
+
+
+\begin{frame}{EM in general}{Jensen's inequality}
+
+  \myfig{2.5in}{jensen}{Ng (2017), CS 229 lecture notes, set 8.}
+
+  \medskip
+  
+  Example: suppose $X$ is a random variable with probability 0.5 of
+  taking value $a$ and probability 0.5 of taking value $b$. By inspection,
+  we see clearly that $\Expec[f(X)] > f(\Expec[X])$.
+
+\end{frame}
+
+
+\begin{frame}{EM in general}{The EM algorithm}
+
+  Suppose we have an $m$-example training set $S = \{ \vec{x}^{(1)},
+  \ldots, \vec{x}^{(m)} \}$.
+
+  \medskip
+
+  We want to fit parameters of a model $p(\vec{x},\vec{z})$ to the data,
+  where the likelihood is given by
+  \begin{eqnarray*}
+    \ell(\mat{\theta}) & = & \sum_{i=1}^m \log p(\vec{x}^{(i)}; \vec{\theta}) \\
+    & = & \sum_{i=1}^m \log \sum_{\vec{z}^{(i)}} p(\vec{x}^{(i)},\vec{z}^{(i)};\vec{\theta})
+  \end{eqnarray*}
+
+\end{frame}
+
+\fi
+
+%======================================================================
+\section{Other unsupervised learning algorithms}
+%======================================================================
+
+\begin{frame}{Other unsupervised learning algorithms}{Types of algorithms}
+
+  In this brief overview, we've seen $k$-means and GMMs.
+
+  \medskip
+
+  What else is out there?  Most unsupervised learning
+  algorithms have one or more of these aims:
+  \begin{itemize}
+    \item Clustering, for purposes of coding, discretizing, or detecting
+      anomalies.
+    \item Probability density estimation, for purposes of positive
+      detection, anomaly detection, or interpolation/synthesis of new
+      data distributed similarly to the training set.
+    \item Latent space discovery, for purposes of dimensionality reduction,
+      positive detection, or interpolation/synthesis of new data distributed
+      similarly to the training set.
+  \end{itemize}
+
+\end{frame}
+
+
+\begin{frame}{Other unsupervised learning algorithms}{Clustering}
+
+  We already saw how $k$-means and GMM can perform data clustering.
+
+  \medskip
+
+  This style of clustering is sometimes called \alert{vector
+  quantization}.  The goal is coding of inputs as members of a
+  discrete set according to spatial locality.
+
+  \medskip
+
+  A second major group of clustering algorithms are \alert{pairwise
+  clustering methods} that use pairwise similarity or distance
+  (affinity) to group inputs. Two types:
+  \begin{itemize}
+    \item \alert{Hierarchical clustering} is top-down.
+    \item \alert{Agglomerative clustering} is bottom-up.
+  \end{itemize}
+
+\end{frame}
+
+
+\begin{frame}{Other unsupervised learning algorithms}{Density estimation}
+
+  We saw the GMM as an example of \alert{probability density estimation}.
+
+  \medskip
+
+  Density estimators can be used for \alert{detection} (any input whose
+  probability density is larger than some value is classified as a positive).
+
+  \medskip
+
+  Density estimators can be used for \alert{anomaly detection}
+  (any input whose probability density is below some value is classified
+  as anomalous).
+
+  \medskip
+
+  The GMM is a \alert{parametric density estimator} and is a \alert{universal
+  approximator}.
+
+  \medskip
+
+  \alert{Non-parametric density estimators} like kernel density estimation
+  do not try to model the exact form of the probability density but instead
+  estimate density directly based on sparsity/density of training data
+  near the target input.
+
+\end{frame}
+
+
+\begin{frame}{Other unsupervised learning algorithms}{Latent space discovery}
+
+  \alert{Latent space} methods map 
+  the input space to a lower-dimensional representation, called
+  a \alert{latent} or \alert{semantic} representation.
+
+  \medskip
+
+  \alert{Principle components analysis}
+  (PCA) models the latent space as Gaussian
+  distribution in the $k$-dimensional linear subspace of the original space
+  in which the input data have the most variance.
+
+  \medskip
+
+  \alert{Locally-linear embedding} (LLE) and other
+  nonlinear dimensionality reduction methods
+  model the data as generated from a non-linear
+  submanifold of the input space. LLE uses a piecewise linear model.
+
+  \medskip
+
+  \alert{Latent Dirichlet allocation} (LDA)
+  is a \alert{topic model} in NLP that
+  imposes a prior on the data distribution in the latent space.
+
+  \medskip
+
+  \alert{Generative adversarial networks} (GANs) represent the
+  mapping from the latent space to the data space by a neural network,
+  usually a deconvolutional neural network. This generative model is
+  trained alongside a discriminative adversary.
+
+\end{frame}
+
+
+\begin{frame}{Other unsupervised learning algorithms}{Summary}
+
+  Unsupervised learning is an extremely rich area, deserving an entire
+  course on its own!
+
+\end{frame}
+
+\end{document}
+
