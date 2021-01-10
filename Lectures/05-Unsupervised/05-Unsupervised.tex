@@ -631,12 +631,106 @@ al.\ (2016), and Ng (2017).
   is a \alert{topic model} in NLP that
   imposes a prior on the data distribution in the latent space.
 
-  \medskip
+\end{frame}
+
+
+\begin{frame}{Other unsupervised learning algorithms}{GANs}
 
   \alert{Generative adversarial networks} (GANs) represent the
   mapping from the latent space to the data space by a neural network,
   usually a deconvolutional neural network. This generative model is
   trained alongside a discriminative adversary.
+
+  \medskip
+
+  Seminal paper: Goodfellow, I., Pouget-Abadie, J., Mirza, M., Xu, B.,
+  Warde-Farley, D., Ozair, S., Courville, A., and Bengio, Y. (2014),
+  Generative adversarial nets, \textit{Advances in Neural Information
+  Processing Systems (NeurIPS 2014)}.
+
+  \medskip
+
+  GANs are \alert{generative} models, not discriminative. Recall the
+  differences.
+
+  \medskip
+
+  For unsupervised learning tasks, we want to model
+  $P(\mathbf{x})$ given a training set
+  $\mathbf{x}^{(1)},\ldots,\mathbf{x}^{(m)}$.
+
+\end{frame}
+
+
+\begin{frame}{Other unsupervised learning algorithms}{GANs}
+
+  Historically, generative models were hard to estimate due to latent
+  variables (like the $z^{(i)}$'s in the GMM) making maximum likelihood
+  estimation difficult.
+
+  \medskip
+
+  GANs take a completely new approach
+  involving playing a two-player minimax game with value function
+  \[ \min_G \max_D V(D,G) = \mathbb{E}_{\mathbf{x} \sim p_\text{data}(\mathbf{x})}  [ \log D(\mathbf{x}) ] + \mathbb{E}_{\mathbf{z} \sim p_\mathbf{z}(\mathbf{z})} [ \log(1 - D(G(\mathbf{z})))]
+  \]
+
+  \medskip
+
+  $G$ and $D$ are neural networks.
+
+  \medskip
+
+  In practice, it works slightly better to have
+  $G$ maximize $\log D(G(\mathbf{z}))$ rather than minimizing
+  $\log (1-D(G(\mathbf{z})))$ and it accomplsihes the same thing
+  but provides stronger gradients early in learning.
+
+\end{frame}
+
+
+\begin{frame}{Other unsupervised learning algorithms}{The GAN training algorithm}
+
+  \begin{small}
+  \begin{tabbing}
+  xxx \= xxx \= xxx \= \kill
+  for number of training iterations do \\
+  \> for $k$ steps do \\
+  \> \> Sample minibatch of $m$ noise samples $\{ \mathbf{z}^{(1)},\ldots,
+        \mathbf{z}^{(m)} \}$ from noise \\
+  \> \> \> prior $p_g(\mathbf{z})$.\\
+  \> \> Sample minibatch of $m$ examples $\{ \mathbf{x}^{(1)},\ldots,
+        \mathbf{x}^{(m)} \}$ from the data \\
+  \> \> \> generating distribution $p_\text{data}(\mathbf{x})$. \\
+  \> \> Update the discriminator using stochastic gradient ascent:
+  \end{tabbing}
+    $$ \nabla_{\theta_d} \frac{1}{m} \sum_{i=1}^m \left[
+      \log D\left( \mathbf{x}^{(i)} \right) + \log \left( 1 - D\left(G\left(\mathbf{z}^{(i)}\right)\right)\right) \right]
+    $$
+  \begin{tabbing}
+  xxx \= xxx \= xxx \= \kill
+  \> Sample minibatch of $m$ noise samples $\{ \mathbf{z}^{(1)},\ldots,
+        \mathbf{z}^{(m)} \}$ from noise prior $p_g(\mathbf{z})$. \\
+  \> Update the generator using stochastic gradient descent:
+  \end{tabbing}
+    $$ \nabla_{\theta_g} \frac{1}{m} \sum_{i=1}^m
+      \log \left( 1 - D\left( G \left( \mathbf{z}^{(i)} \right) \right)\right)
+    $$
+
+  \end{small}
+
+\end{frame}
+
+
+\begin{frame}{Other unsupervised learning algorithms}{GAN exercise}
+
+  In-class exercise: Using PyTorch, build and train a GAN to model the
+  synthetic 2D mixture of Gaussians from Lab 12.
+
+  \medskip
+
+  Don't use any of PyTorch's specialized GAN classes. Just use ordinary
+  fully connected multilayer perceptrons for G and D.
 
 \end{frame}
 

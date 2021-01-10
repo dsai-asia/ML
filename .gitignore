@@ -6,3 +6,4 @@
 *.toc
 *.vrb
 .ipynb_checkpoints
+*Solution.ipynb
