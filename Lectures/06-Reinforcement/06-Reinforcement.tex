@@ -85,9 +85,12 @@ Readings for these lecture notes:
 \begin{itemize}
 \item[-] Ng, A. (2017), \textit{Reinforcement Learning and Control}.
   Lecture note set 12 for CS229, Stanford University.
+\item[-] Sutton, R.S. and Barto, A.G. (2018), \textit{Reinforcement
+  Learning: An Introduction}, 2nd ed., MIT Press.
 \end{itemize}
 
-These notes contain material $\copyright$ Ng (2017).
+These notes contain material $\copyright$ Ng (2017) and Sutton and
+Barto (2018).
 
 \end{frame}
 
@@ -337,16 +340,17 @@ These notes contain material $\copyright$ Ng (2017).
   For the time being, we assume our MDP has a finite state space and
   action space ($|S| < \infty$, $|A| < \infty$).
 
-  \begin{tabbing}
-    xxx \= xxx \= xxx \= \kill
-    \textbf{Algorithm} \textsc{Value-Iteration} \\
-    \> For each state $s$ \\
-    \> \> $V(s) \leftarrow 0$ \\
-    \> Repeat until convergence \\
-    \> \> For each state $s$ \\
-    \> \> \>
-       $V(s) \leftarrow R(s) + \max_{a\in A} \gamma \sum_{s'\in S} P_{sa}(s')V(s')$
-  \end{tabbing}
+  \begin{block}{\textbf{Algorithm} \textsc{Value-Iteration}}
+    \begin{tabbing}
+      xxx \= xxx \= xxx \= \kill    
+      \> For each state $s$ \\
+      \> \> $V(s) \leftarrow 0$ \\
+      \> Repeat until convergence \\
+      \> \> For each state $s$ \\
+      \> \> \>
+      $V(s) \leftarrow R(s) + \max_{a\in A} \gamma \sum_{s'\in S} P_{sa}(s')V(s')$
+    \end{tabbing}
+  \end{block}
 
   \medskip
 
@@ -368,15 +372,16 @@ These notes contain material $\copyright$ Ng (2017).
   \medskip
 
   \alert{Policy iteration} computes $\pi^*$ somewhat more directly:
-  \begin{tabbing}
-    xxx \= xxx \= xxx \= \kill
-    \textbf{Algorithm} \textsc{Policy-Iteration} \\
-    \> Initialize $\pi$ randomly \\
-    \> Repeat until convergence \\
-    \> \> $V \leftarrow V^\pi$ \\
-    \> \> For each state $s$ \\
-    \> \> \> $\pi(s) \leftarrow \argmax_{a\in A}\sum_{s'\in S}P_{sa}(s')V(s')$
-  \end{tabbing}
+  \begin{block}{\textbf{Algorithm} \textsc{Policy-Iteration}}
+    \begin{tabbing}
+      xxx \= xxx \= xxx \= \kill    
+      \> Initialize $\pi$ randomly \\
+      \> Repeat until convergence \\
+      \> \> $V \leftarrow V^\pi$ \\
+      \> \> For each state $s$ \\
+      \> \> \> $\pi(s) \leftarrow \argmax_{a\in A}\sum_{s'\in S}P_{sa}(s')V(s')$
+    \end{tabbing}
+  \end{block}
 
   \medskip
 
@@ -485,16 +490,17 @@ These notes contain material $\copyright$ Ng (2017).
 \begin{frame}{Learning a model for a MDP}{Estimating $P_{sa}$}
 
   Putting value iteration together with model learning for $P_{sa}$, we obtain
-  \begin{tabbing}
-    xxx \= xxx \= xxx \= \kill
-    \textbf{Algorithm} \textsc{Value-Iteration-With-Transition-Learning} \\
-    \> Initialize $\pi$ randomly \\
-    \> Repeat \\
-    \> \> Execute $\pi$ in the MDP for some number of trials \\
-    \> \> Use accumulated experience to update $P_{sa}$ \\
-    \> \> Use value iteration to estimate $V$ \\
-    \> \> Update $\pi$ to be the greedy policy for $V$ \\
-  \end{tabbing}
+  \begin{block}{\textbf{Algorithm} \textsc{Value-Iteration-With-Transition-Learning}}
+    \begin{tabbing}
+      xxx \= xxx \= xxx \= \kill
+      \> Initialize $\pi$ randomly \\
+      \> Repeat \\
+      \> \> Execute $\pi$ in the MDP for some number of trials \\
+      \> \> Use accumulated experience to update $P_{sa}$ \\
+      \> \> Use value iteration to estimate $V$ \\
+      \> \> Update $\pi$ to be the greedy policy for $V$ \\
+    \end{tabbing}
+  \end{block}
 
   \medskip
 
@@ -508,6 +514,249 @@ These notes contain material $\copyright$ Ng (2017).
   $a$ in state $s$.
   
 \end{frame}
+
+%======================================================================
+\section{Temporal-Difference Methods}
+%======================================================================
+
+\begin{frame}{Temporal-Difference Methods}{Introduction}
+
+  \alert{TD learning} combines ideas from Monte Carlo methods with
+  ideas from dynamic programming.\footnote{``Dynamic programming''
+    refers to any computational algorithm that
+    solves a complex problem by breaking it down into smaller problems
+    recursively.}
+
+  \medskip
+
+  TD methods update estimates of $V$ or $Q$ iteratively based on
+  other learned estimates.
+
+\end{frame}
+
+
+\begin{frame}{Temporal-Difference Methods}{TD prediction}
+
+  Our first TD method is \alert{TD prediction}, which is the TD
+  version of policy evaluation, aiming to estimate $V^\pi$.
+
+  \medskip
+
+  Monte Carlo methods wait until the real return following a visit
+  is known:
+  $$V(S_t) \leftarrow V(s_t) + \alpha \left[ G_t - V(s_t) \right],$$
+  where $G_t$ is the \alert{actual return} obtained in state $s_t$
+  following $\pi$ to the end of the episode.
+
+  \medskip
+
+  TD methods don't wait until $G_t$ is known. Instead, the simplest
+  TD method, TD(0), makes the update
+  $$ V(s_t) \leftarrow V(s_t) + \alpha \left[ R_{t+1} + \gamma V(s_{t+1})
+    - V(s_t) \right] $$
+  right after transitioning to $s_{t+1}$ and receiving $R_{t+1}$.
+
+\end{frame}
+
+
+\begin{frame}{Temporal-Difference Methods}{TD prediction}
+
+  Take note of the difference: MC uses a target of $G_t$, whereas
+  TD(0) uses a target of $R_{t+1} + \gamma V(s_{t+1})$.
+
+  \medskip
+  
+  \begin{block}{\textbf{Algorithm} \textsc{Tabular TD(0) for $V^\pi$}}
+
+  \begin{tabbing}
+    xxx \= xxx \= xxx \= \kill
+    \> Input: policy $\pi$, learning rate $\alpha$ \\
+    \> Initialize $V(s)$ for all $s \in S$ arbitrarily except $V(\mathrm{terminal}) = 0$\\
+    \> For each episode: \\
+    \> \> Initialize $s$ \\
+    \> \> For each step in episode: \\
+    \> \> \> $a \leftarrow \pi(s)$ \\
+    \> \> \> $s' \sim P_{sa}$ \\
+    \> \> \> $V(s) \leftarrow V(s) + \alpha \left[ R(s') + \gamma V(s') - V(s)\right]$ \\
+  \end{tabbing}
+
+  \end{block}
+
+\end{frame}
+
+
+\begin{frame}{Temporal-Difference Methods}{TD prediction}
+
+  There's a nice illustration of the difference between MC and TD
+  policy evaluation in Sutton and Barto (p.\ 122): driving home from
+  work every day and continually updating an estimate of how long it
+  will take to get home.
+
+  \medskip
+
+  Reward is the elapsed time on each leg of your journey (when we
+  switch to control, we would have to use negative reward).
+
+  \medskip
+  
+  \myfig{4in}{sutton-fig6-1}{Sutton and Barto (2018), Figure 6.1:
+  MC (left) vs.\ TD (right).}
+  
+\end{frame}
+
+
+\begin{frame}{Temporal-Difference Methods}{TD prediction}
+
+  Both the MC and TD methods are \alert{guaranteed to converge} to $V^\pi$
+  if $\alpha$ is small enough and decreases over time.
+
+  \medskip
+
+  MC is fine for short episodes, but TD is preferred when episodes
+  are long or infinite.
+
+  \medskip
+
+  Empirical studies usually find that TD methods converge faster than
+  MC.
+  
+\end{frame}
+
+
+\begin{frame}{Temporal-Difference Methods}{TD control: SARSA}
+
+  Now we consider the \alert{control} problem, the task of finding $\pi^*$.
+
+  \medskip
+
+  SARSA is an \alert{on-policy} TD policy iteration method.
+
+  \medskip
+
+  We introduce the \alert{action value function} $q_\pi(s,a)$, which
+  is the discounted return expected after executing action $a$ in state $s$ then
+  following $\pi$.
+
+  \medskip
+
+  The SARSA update is
+  $$Q(s_t,a_t) \leftarrow Q(s_t,a_t) + \alpha\left[ R(s_{t+1}) + \gamma
+    Q(s_{t+1},a_{t+1}) - Q(s_t,a_t) \right]. $$
+
+  The method is called SARSA due to the quintuple $(s_t, a_t, r_{t+1},
+  s_{t+1}, a_{t+1})$.
+  
+\end{frame}
+
+
+\begin{frame}{Temporal-Difference Methods}{TD control: SARSA}
+
+  \begin{block}{\textbf{Algorithm} \textsc{SARSA on-policy TD control}}
+  \begin{tabbing}
+    xxx \= xxx \= xxx \= \kill
+    \> Input: learning rate $\alpha$, exploration probability $\varepsilon$ \\
+    \> $\forall s, a$, initialize $Q(s,a)$ arbitrarily
+    except $Q(\mathrm{terminal},\cdot) = 0$ \\
+    \> For each episode: \\
+    \> \> Initialize $s$, choose $a$ using policy derived from $Q$ (e.g., $\varepsilon$-greedy) \\
+    \> \> For each step in episode: \\
+    \> \> \> Take action $a$, observe $r$, $s'$ \\
+    \> \> \> Choose $a'$ from $s'$ using policy derived from $Q$ (e.g., $\varepsilon$-greedy) \\
+    \> \> \> $Q(s,a) \leftarrow Q(s,a) + \alpha \left[ r + \gamma Q(s', a') - Q(s, a) \right]$ \\
+    \> \> \> $s \leftarrow s'; a \leftarrow a'$
+  \end{tabbing}
+  \end{block}
+
+\end{frame}
+
+
+\begin{frame}{Temporal-Difference Methods}{TD control: SARSA}
+
+  There's a nice example of SARSA for the ``Windy Gridworld'' example
+  in Sutton and Barto on p.\ 130.
+
+  \medskip
+
+  \alert{Exercise:} reproduce the SARSA result shown in the graph on
+  p.\ 130, then do Exercise 6.9 on p.\ 131.
+
+\end{frame}
+
+
+\begin{frame}{Temporal-Difference Methods}{TD control: Q-learning}
+
+  \alert{Q-learning} (Watkins, 1989) was one of the early
+  breakthroughs in RL.
+
+  \medskip
+
+  It is also fundamental to the Mnih et al.\ (2013) breakthrough with DQN.
+
+  \medskip
+
+  The Q-learning update is
+  $$Q(s_t,a_t) \leftarrow Q(s_t,a_t) + \alpha \left[ R(s_{t+1}) + \gamma
+    \max_a Q(s_{t+1},a) - Q(s_t,a_t) \right]. $$
+
+  \medskip
+
+  Compare with SARSA.
+
+  \medskip
+  
+  Actions are taken using $\varepsilon$-greedy, but the updates are
+  based on the action that would be taken with the optimal policy,
+  without $\varepsilon$-greedy.
+
+  \medskip
+
+  Because of this difference, Q-learning is an \alert{off-policy} TD
+  method.
+
+\end{frame}
+
+
+\begin{frame}{Temporal-Difference Methods}{TD control: Q-learning}
+  
+  \begin{block}{\textbf{Algorithm} \textsc{Q-learning off-policy TD control}}
+  \begin{tabbing}
+    xxx \= xxx \= xxx \= \kill
+    \> Input: learning rate $\alpha$, exploration probability $\varepsilon$ \\
+    \> $\forall s, a$, initialize $Q(s,a)$ arbitrarily
+    except $Q(\mathrm{terminal},\cdot) = 0$ \\
+    \> For each episode: \\
+    \> \> Initialize $s$ \\
+    \> \> For each step in episode: \\
+    \> \> \> Choose $a$ using policy derived from $Q$ (e.g., $\varepsilon$-greedy) \\
+    \> \> \> Take action $a$, observe $r$, $s'$ \\
+    \> \> \> $Q(s,a) \leftarrow Q(s,a) + \alpha \left[ r + \gamma \max_{a'} Q(s', a') - Q(s, a) \right]$ \\
+    \> \> \> $s \leftarrow s'$
+  \end{tabbing}
+  \end{block}
+
+  \medskip
+  
+  Note that Q-learning is a little simpler than SARSA, and note
+  precisely why it is off-policy.
+
+\end{frame}
+
+
+\begin{frame}{Temporal-Difference Methods}{TD control: Q-learning}
+
+  There is a nice demonstration of the differences between SARSA and
+  Q-learning, the ``Cliff Walking'' example in Sutton and Barto on
+  p.\ 132.
+
+  \medskip
+
+  \alert{Exercise}: implement SARSA and Q-learning for the cliff walking
+  example to demonstrate that Q-learning learns an optimal policy that is
+  different from (and better than) the $\varepsilon$-greedy policy learned
+  by SARSA.
+  
+\end{frame}
+
 
 %======================================================================
 \section{Continuous state MDPs}
