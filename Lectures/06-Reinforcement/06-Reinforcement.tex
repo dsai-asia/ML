@@ -758,6 +758,142 @@ Barto (2018).
 \end{frame}
 
 
+\begin{frame}{Temporal-Difference Methods}{Maximization bias and double learning}
+
+  The TD control algorithms involve \alert{maximization} during policy
+  construction.
+
+  \medskip
+
+  Q-learning's target policy is the greedy policy, which involves
+  taking action $a$ maximizing $Q(s,a)$.
+
+  \medskip
+
+  SARSA's policy is, for example, $\varepsilon$-greedy, also involving
+  maximization.
+
+  \medskip
+
+  The max operator tends to introduce \alert{bias} into the value estimates.
+
+  \medskip
+
+  Consider a state $s$ for which all actions $a$ have 0 value. With
+  uncertain but unbiased estimates of $Q(s,a)$, some will be positive
+  and some will be negative.
+
+  \medskip
+
+  $\max_a Q(s,a)$, on the other hand, will almost always be positive,
+  a positive bias called \alert{maximization bias}.
+
+\end{frame}
+
+
+\begin{frame}{Temporal-Difference Methods}{Maximization bias and double learning
+  }
+
+  Sutton and Barto give an example MDP in which the optimal
+  action is always to move ``right'' from state A, but due to maximization
+  bias and the high variance of the distribution over rewards,
+  Q-learning will overestimate the value of a ``left'' move.
+
+  \bigskip
+  
+  \myfig{3in}{sutton-fig6-5}{Sutton and Barto (2018), Fig.\ 6.5}
+  
+\end{frame}
+
+
+\begin{frame}{Temporal-Difference Methods}{Maximization bias and double learning}
+
+  Idea to learn without maximization bias: divide the episodes into \alert{two
+    sets} and use them to learn two separate estimates $Q_1$ and $Q_2$ of
+  $Q(a)$.
+
+  \medskip
+
+  We use $Q_1$ for maximization: $$a^* = \argmax_a Q_1(a),$$
+  and we use $Q_2$ as the estimate of the value:
+  $$Q_2(a^*) = Q_2(\argmax_a Q_1(a)).$$
+
+  The expectation $$\mathbb{E}\left[ Q_2(a^*) \right] = q(a^*)$$ is
+  unbiased.
+  
+\end{frame}
+
+
+\begin{frame}{Temporal-Difference Methods}{Maximization bias and double learning}
+
+  We also use $Q_1$ as an unbiased estimate of the value of actions selected
+  using $Q_2$: $$Q_1(a^*)=Q_1(\argmax_a Q_2(a)).$$
+
+  This is called \alert{double learning}.
+
+  \medskip
+
+  We learn two estimates, but only one is updated on each episode.
+
+  \medskip
+
+  \alert{Double Q-learning} uses this idea to get more accurate, less
+  biased estimates of values and can learn an optimal policy for the
+  left/right environment above.
+  
+\end{frame}
+
+
+\begin{frame}{Temporal-Difference Methods}{Maximization bias and double learning}
+
+  \begin{block}{\textbf{Algorithm} \textsc{Double Q-learning} for $Q_1 \approx
+      Q_2 \approx q$}
+    \begin{tabbing}
+      xxx \= xxx \= xxx \= xxx \= xxx \= xxx \= \kill
+      Input: learning rate $\alpha$, exploration probability $\varepsilon$ \\
+      $\forall s, a$, initialize $Q_1(s,a)$ and $Q_2(s,a)$ arbitrarily
+      except $Q(\mathrm{terminal},\cdot) = 0$ \\
+      For each episode: \\
+      \> Initialize $s$ \\
+      \> For each step in episode: \\
+      \> \> Choose $a$ using $\varepsilon$-greedy with $Q_1+Q_2$ \\
+      \> \> Take action $a$, observe $r$, $s'$ \\
+      \> \> With probability $\frac{1}{2}$: \\
+      \> \> \> $Q_1(s,a) \leftarrow Q_1(s,a) \; + $ \\
+      \> \> \> \> \> \> $\alpha \left[ r + \gamma Q_2(s', \argmax_{a'} Q_1(s', a')) - Q_1(s, a) \right]$ \\
+      \> \> else: \\
+      \> \> \> $Q_2(s,a) \leftarrow Q_2(s,a) \; + $ \\
+      \> \> \> \> \> \> $\alpha \left[ r + \gamma Q_1(s', \argmax_{a'} Q_2(s', a')) - Q_2(s, a) \right]$ \\
+      \> \> $s \leftarrow s'$
+    \end{tabbing}
+  \end{block}
+
+\end{frame}
+
+
+\begin{frame}{Temporal-Difference Methods}{Maximization bias and double learning}
+
+  That's it for TD methods for now.
+
+  \medskip
+
+  We'll return to TD methods when we consider Deep RL.
+
+  \medskip
+
+  First we describe
+  some of the methods for dealing with continuous state MDPs.
+
+  \medskip
+
+  Then we'll come to the modern use of deep neural networks to
+  approximate value functions
+  in both continuous state spaces and large discrete state
+  spaces.
+
+\end{frame}
+
+
 %======================================================================
 \section{Continuous state MDPs}
 %======================================================================
@@ -1119,10 +1255,10 @@ Barto (2018).
 \end{frame}
 
 %======================================================================
-\section{Linear quadratic Gaussian (LQG) regulation}
+\section{Partially observable Markov decision processes}
 %======================================================================
 
-\begin{frame}{Linear quadratic Gaussian (LQG) regulation}
+\begin{frame}{Partially observable Markov decision processes (POMDPs)}
 
   Sometimes we are not able to fully observe $\vec{s}_t$.
 
@@ -1145,17 +1281,20 @@ Barto (2018).
 
   \medskip
 
-  A POMDP is thus given by a tuple $({\cal S},{\cal O},{\cal
+  A POMDP with finite horizon is thus given by a tuple $({\cal S},{\cal O},{\cal
     A},P_{sa},P_{zs},T,R)$.
 
   \medskip
-  
+
   In the POMDP setting, we will maintain a \alert{belief} over the states
   $p(\vec{s}_t \mid \vec{z}_1, \ldots, \vec{z}_t)$, and the policy will map
   beliefs to actions rather than crisp states to actions.
-  
+
 \end{frame}
 
+%======================================================================
+\section{Linear quadratic Gaussian (LQG) regulation}
+%======================================================================
 
 \begin{frame}{Linear quadratic Gaussian (LQG) regulation}
 
